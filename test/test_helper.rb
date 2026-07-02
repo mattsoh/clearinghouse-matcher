@@ -1,6 +1,8 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require "minitest/mock"
+require_relative "support/fake_hcb_client"
 
 module ActiveSupport
   class TestCase

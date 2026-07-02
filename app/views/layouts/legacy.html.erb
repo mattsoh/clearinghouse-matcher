@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= content_for(:title) || "Clearinghouse Matcher" %></title>
+<%= csrf_meta_tags %>
+<script>window.HCB_ORGANIZATION_ID = <%= raw organization_id.to_json %>;</script>
+<%= stylesheet_link_tag "legacy", "data-turbo-track": "reload" %>
+</head>
+<body>
+
+<%= yield %>
+
+<%= javascript_include_tag "legacy/hcb_csrf_shim", "legacy/details" %>
+<%= yield :page_scripts %>
+</body>
+</html>

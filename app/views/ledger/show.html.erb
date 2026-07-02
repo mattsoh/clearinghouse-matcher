@@ -1,0 +1,83 @@
+<% content_for :title, "Full Ledger — Clearinghouse Matcher" %>
+
+<header id="stats">
+  <div class="stat">
+    <span class="label">&nbsp;</span>
+    <span class="value"><%= link_to "← Back to matcher", organization_matcher_path(organization_id: organization_id), class: "nav-link" %></span>
+  </div>
+  <div class="stat">
+    <span class="label">Zero balance on</span>
+    <span class="value" id="stat-zero-date">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">Final running balance (approx., this window)</span>
+    <span class="value" id="stat-final-balance">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">Total transactions</span>
+    <span class="value" id="stat-count">—</span>
+  </div>
+</header>
+
+<main id="ledger-main">
+  <section class="panel" id="panel-ledger">
+    <div class="panel-header">
+      <h2>All transactions, oldest → newest, with running balance</h2>
+      <div class="search-group">
+        <div class="search-wrap">
+          <input type="text" class="search" id="search-ledger" placeholder="Search memo…">
+          <button type="button" class="search-clear" data-clear-target="search-ledger" aria-label="Clear memo search">×</button>
+        </div>
+        <div class="search-wrap search-wrap-amount">
+          <input type="text" class="search search-amount" id="search-ledger-amount" placeholder="Search amount…">
+          <button type="button" class="search-clear" data-clear-target="search-ledger-amount" aria-label="Clear amount search">×</button>
+        </div>
+      </div>
+      <div class="status-filter">
+        <label class="status-toggle status-toggle-matched">
+          <input type="checkbox" id="filter-matched" checked>
+          Matched
+        </label>
+        <label class="status-toggle status-toggle-discrepancy">
+          <input type="checkbox" id="filter-discrepancy" checked>
+          Discrepancy
+        </label>
+        <label class="status-toggle status-toggle-unmatched">
+          <input type="checkbox" id="filter-unmatched" checked>
+          Unmatched
+        </label>
+      </div>
+    </div>
+    <div class="ledger-table-wrap">
+      <table class="ledger-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Memo</th>
+            <th class="num">Amount</th>
+            <th class="num">Running balance</th>
+            <th>User</th>
+            <th>Category</th>
+          </tr>
+        </thead>
+        <tbody id="ledger-body">
+          <tr><td colspan="6"><div class="empty-msg loading-msg"><span class="loading-spinner"></span>Loading transactions&hellip;</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div id="detail-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="detail-modal-title"></h3>
+      <button type="button" id="detail-modal-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+  </div>
+</div>
+
+<% content_for :page_scripts do %>
+  <%= javascript_include_tag "legacy/ledger" %>
+<% end %>

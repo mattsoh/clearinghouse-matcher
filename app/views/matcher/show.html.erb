@@ -1,0 +1,170 @@
+<% content_for :title, "Clearinghouse Matcher" %>
+
+<header id="stats">
+  <div class="stat">
+    <span class="label">Zero balance on</span>
+    <span class="value" id="stat-zero-date">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">&nbsp;</span>
+    <span class="value"><%= link_to "View full ledger →", organization_ledger_path(organization_id: organization_id), class: "nav-link" %></span>
+  </div>
+  <div class="stat">
+    <span class="label">Unmatched incoming</span>
+    <span class="value" id="stat-in-count">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">Unmatched outgoing</span>
+    <span class="value" id="stat-out-count">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">Unmatched in total</span>
+    <span class="value" id="stat-in-sum">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">Unmatched out total</span>
+    <span class="value" id="stat-out-sum">—</span>
+  </div>
+  <div class="stat">
+    <span class="label">Net (should shrink to current balance)</span>
+    <span class="value" id="stat-net">—</span>
+  </div>
+</header>
+
+<main>
+  <section class="panel" id="panel-incoming">
+    <div class="panel-header">
+      <div class="panel-header-top">
+        <h2>Incoming</h2>
+        <div class="header-actions">
+          <select class="sort-select" id="sort-incoming" aria-label="Sort incoming transactions">
+            <option value="date-desc">Date ↓</option>
+            <option value="date-asc">Date ↑</option>
+            <option value="amount-desc">Amount ↓</option>
+            <option value="amount-asc">Amount ↑</option>
+          </select>
+          <button type="button" class="secondary add-btn" id="btn-add-incoming">+ Add transaction</button>
+        </div>
+      </div>
+      <div class="search-group">
+        <div class="search-wrap">
+          <input type="text" class="search" id="search-incoming" placeholder="Search memo…">
+          <button type="button" class="search-clear" data-clear-target="search-incoming" aria-label="Clear memo search">×</button>
+        </div>
+        <div class="search-wrap search-wrap-amount">
+          <input type="text" class="search search-amount" id="search-incoming-amount" placeholder="Search amount…">
+          <button type="button" class="search-clear" data-clear-target="search-incoming-amount" aria-label="Clear amount search">×</button>
+        </div>
+      </div>
+    </div>
+    <div class="list" id="list-incoming">
+      <div class="empty-msg loading-msg"><span class="loading-spinner"></span>Loading transactions&hellip;</div>
+    </div>
+  </section>
+
+  <section class="panel tray" id="panel-tray">
+    <div class="panel-header"><h2>Current match</h2></div>
+    <div id="tray-empty" class="tray-empty">Click transactions on the left and/or right to start a match.</div>
+    <div id="tray-body" class="tray-body hidden">
+      <div class="tray-incoming-list" id="tray-incoming-list"></div>
+      <div class="tray-arrow">⚖ should equal ⚖</div>
+      <div class="tray-outgoing-list" id="tray-outgoing-list"></div>
+      <div class="tray-totals">
+        <div>Incoming: <span id="tray-in-amt"></span></div>
+        <div>Outgoing selected: <span id="tray-out-amt"></span></div>
+        <div id="tray-diff-row">Difference: <span id="tray-diff"></span></div>
+      </div>
+      <div class="tray-actions">
+        <button type="button" id="btn-confirm">Confirm match</button>
+        <button type="button" id="btn-cancel" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-outgoing">
+    <div class="panel-header">
+      <div class="panel-header-top">
+        <h2>Outgoing</h2>
+        <div class="header-actions">
+          <select class="sort-select" id="sort-outgoing" aria-label="Sort outgoing transactions">
+            <option value="date-desc">Date ↓</option>
+            <option value="date-asc">Date ↑</option>
+            <option value="amount-desc">Amount ↓</option>
+            <option value="amount-asc">Amount ↑</option>
+          </select>
+          <button type="button" class="secondary add-btn" id="btn-add-outgoing">+ Add transaction</button>
+        </div>
+      </div>
+      <div class="search-group">
+        <div class="search-wrap">
+          <input type="text" class="search" id="search-outgoing" placeholder="Search memo…">
+          <button type="button" class="search-clear" data-clear-target="search-outgoing" aria-label="Clear memo search">×</button>
+        </div>
+        <div class="search-wrap search-wrap-amount">
+          <input type="text" class="search search-amount" id="search-outgoing-amount" placeholder="Search amount…">
+          <button type="button" class="search-clear" data-clear-target="search-outgoing-amount" aria-label="Clear amount search">×</button>
+        </div>
+      </div>
+    </div>
+    <div class="list" id="list-outgoing">
+      <div class="empty-msg loading-msg"><span class="loading-spinner"></span>Loading transactions&hellip;</div>
+    </div>
+  </section>
+</main>
+
+<section id="matches-section-unbalanced">
+  <div class="panel-header">
+    <h2>Unbalanced matches (<span id="matches-unbalanced-count">0</span>)</h2>
+  </div>
+  <div id="matches-unbalanced-list"></div>
+</section>
+
+<section id="matches-section-balanced">
+  <div class="panel-header">
+    <h2>Balanced matches (<span id="matches-balanced-count">0</span>)</h2>
+  </div>
+  <div id="matches-balanced-list"></div>
+</section>
+
+<div id="detail-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="detail-modal-title"></h3>
+      <button type="button" id="detail-modal-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+  </div>
+</div>
+
+<div id="add-tx-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="add-tx-modal-title">Add transaction</h3>
+      <button type="button" id="add-tx-modal-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="add-tx-form">
+        <div class="modal-field">
+          <label class="field-label" for="add-tx-date">Date</label>
+          <input type="date" id="add-tx-date" required>
+        </div>
+        <div class="modal-field">
+          <label class="field-label" for="add-tx-memo">Memo</label>
+          <input type="text" id="add-tx-memo" placeholder="e.g. Discrepancy correction" required>
+        </div>
+        <div class="modal-field">
+          <label class="field-label" for="add-tx-amount">Amount</label>
+          <input type="number" id="add-tx-amount" step="0.01" min="0.01" placeholder="0.00" required>
+        </div>
+        <div class="tray-actions">
+          <button type="submit">Add transaction</button>
+          <button type="button" class="secondary" id="add-tx-cancel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<% content_for :page_scripts do %>
+  <%= javascript_include_tag "legacy/app" %>
+<% end %>
