@@ -1,6 +1,7 @@
 const API_BASE = `/organizations/${window.HCB_ORGANIZATION_ID}`;
 
 let ledger = [];
+let provisional = [];
 let matchedIds = new Set();
 let discrepancyIds = new Set();
 
@@ -22,14 +23,30 @@ function showLedgerMessage(html) {
 
 async function load() {
   showLedgerMessage(`<div class="empty-msg loading-msg"><span class="loading-spinner"></span>Loading transactions…</div>`);
+  provisional = [];
   let data, matchData;
   try {
-    const [ledgerRes, matchesRes] = await Promise.all([
+    const matchesPromise = fetch(`${API_BASE}/api/matches`).then((r) => {
+      if (!r.ok) throw new Error("bad response");
+      return r.json();
+    });
+
+    await loadPagesStreaming(`${API_BASE}/api/ledger/page`, (rows, totalCount) => {
+      // Pages arrive newest-first, same order the table displays in -- no
+      // reordering needed for this provisional view. Running balance and the
+      // zero-point cutoff aren't knowable until the full history is in, so
+      // they're left blank until the final, authoritative render below.
+      provisional.push(...rows.map((r) => ({ ...r, running_balance: null, is_zero_point: false })));
+      renderProvisional(totalCount);
+    });
+
+    const [ledgerRes, matchDataResolved] = await Promise.all([
       fetch(`${API_BASE}/api/ledger`),
-      fetch(`${API_BASE}/api/matches`),
+      matchesPromise,
     ]);
-    if (!ledgerRes.ok || !matchesRes.ok) throw new Error("bad response");
-    [data, matchData] = await Promise.all([ledgerRes.json(), matchesRes.json()]);
+    if (!ledgerRes.ok) throw new Error("bad response");
+    data = await ledgerRes.json();
+    matchData = matchDataResolved;
   } catch (e) {
     showLedgerMessage(`<div class="empty-msg">Could not load transactions. <a href="#" class="nav-link load-retry">Retry</a></div>`);
     document.querySelector(".load-retry").addEventListener("click", (ev) => {
@@ -58,6 +75,27 @@ async function load() {
   document.getElementById("stat-count").textContent = ledger.length;
 
   render();
+}
+
+// Shown while pages are still streaming in: raw rows with no search/filter/
+// status styling and no running balance yet, just so the table isn't a blank
+// spinner for however long the full drain takes.
+function renderProvisional(totalCount) {
+  document.getElementById("stat-count").textContent = totalCount
+    ? `Loading… ${provisional.length} of ~${totalCount}`
+    : `Loading… ${provisional.length}…`;
+  const body = document.getElementById("ledger-body");
+  body.innerHTML = provisional.map((r) => {
+    const dirClass = r.amount > 0 ? "amt-in" : "amt-out";
+    return `<tr>
+      <td>${r.date}</td>
+      <td class="memo-cell" title="${escapeHtml(r.memo)}">${escapeHtml(r.memo)}</td>
+      <td class="num ${dirClass}">${fmt(r.amount)}</td>
+      <td class="num">…</td>
+      <td>${escapeHtml(r.user_name)}</td>
+      <td>${escapeHtml(r.category_label)}</td>
+    </tr>`;
+  }).join("");
 }
 
 function rowStatus(r) {

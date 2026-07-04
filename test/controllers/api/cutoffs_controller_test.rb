@@ -21,7 +21,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
 
   test "a reader cannot change the cutoff" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "reader" do
+      stub_membership("reader") do
         patch :update, params: { organization_id: "org_1", transaction_id: "txn_2" }
       end
     end
@@ -30,7 +30,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
 
   test "a member cannot change the cutoff -- it can cascade-undo other people's matches" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "member" do
+      stub_membership("member") do
         patch :update, params: { organization_id: "org_1", transaction_id: OrganizationLedger::BEGINNING_ID }
       end
     end
@@ -39,7 +39,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
 
   test "a manager can move the cutoff to a conflict-free option" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "manager" do
+      stub_membership("manager") do
         patch :update, params: { organization_id: "org_1", transaction_id: OrganizationLedger::BEGINNING_ID }
       end
     end
@@ -52,7 +52,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
 
   test "rejects an unknown transaction id" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "manager" do
+      stub_membership("manager") do
         patch :update, params: { organization_id: "org_1", transaction_id: "not_real" }
       end
     end
@@ -65,7 +65,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
     match.match_transactions.create!(hcb_organization_id: "org_1", hcb_transaction_id: "txn_3", direction: :outgoing)
 
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "manager" do
+      stub_membership("manager") do
         patch :update, params: { organization_id: "org_1", transaction_id: "txn_2" }
       end
     end
@@ -86,7 +86,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
     match.match_transactions.create!(hcb_organization_id: "org_1", hcb_transaction_id: "txn_3", direction: :outgoing)
 
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "manager" do
+      stub_membership("manager") do
         patch :update, params: { organization_id: "org_1", transaction_id: "txn_2", confirm: true }
       end
     end

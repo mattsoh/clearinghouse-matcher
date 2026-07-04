@@ -16,7 +16,7 @@ class Api::TransactionsControllerTest < ActionController::TestCase
     match.match_transactions.create!(hcb_organization_id: "org_1", hcb_transaction_id: "txn_old", direction: :outgoing)
 
     Hcb::Client.stub :new, fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "reader" do
+      stub_membership("reader") do
         get :index, params: { organization_id: "org_1" }
       end
     end
@@ -33,7 +33,7 @@ class Api::TransactionsControllerTest < ActionController::TestCase
     ])
 
     Hcb::Client.stub :new, fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "reader" do
+      stub_membership("reader") do
         get :index, params: { organization_id: "org_1" }
       end
     end
@@ -43,5 +43,24 @@ class Api::TransactionsControllerTest < ActionController::TestCase
     beginning = options.find { |o| o["transaction_id"] == OrganizationLedger::BEGINNING_ID }
     assert beginning
     assert_equal true, beginning["beginning"]
+  end
+
+  test "page returns presented transactions for a stream_id, with no more pages left" do
+    fake_client = FakeHcbClient.new(transactions: [
+      { "id" => "txn_2", "date" => "2026-01-02", "memo" => "Grant", "amount_cents" => -5_000 },
+      { "id" => "txn_1", "date" => "2026-01-01", "memo" => "Donation", "amount_cents" => 5_000 }
+    ])
+
+    Hcb::Client.stub :new, fake_client do
+      stub_membership("reader") do
+        get :page, params: { organization_id: "org_1", stream_id: "s1" }
+      end
+    end
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal [ "txn_2", "txn_1" ], body["rows"].map { |t| t["id"] }
+    assert_not body["has_more"]
+    assert_nil body["next_after"]
   end
 end

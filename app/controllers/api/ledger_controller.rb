@@ -22,4 +22,18 @@ class Api::LedgerController < ApplicationController
       ledger: rows
     }
   end
+
+  # One HCB page at a time, so the frontend can render rows as they arrive
+  # instead of blocking on the full drain #index needs for running balances.
+  def page
+    result = Hcb::OrganizationTransactions.new(hcb_client, organization_id)
+      .fetch_page(stream_id: params[:stream_id].to_s, after: params[:after].presence)
+
+    render json: {
+      rows: result[:data].map { |t| Hcb::TransactionPresenter.new(t).as_json },
+      has_more: result[:has_more],
+      next_after: result[:next_after],
+      total_count: result[:total_count]
+    }
+  end
 end

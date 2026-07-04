@@ -17,7 +17,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
 
   test "a non-member is forbidden" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, nil do
+      stub_membership(nil) do
         get :index, params: { organization_id: "org_1" }
       end
     end
@@ -26,7 +26,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
 
   test "a reader can list matches but cannot create one" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "reader" do
+      stub_membership("reader") do
         get :index, params: { organization_id: "org_1" }
         assert_response :success
 
@@ -38,7 +38,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
 
   test "a member can create and then undo a match" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "member" do
+      stub_membership("member") do
         post :create, params: { organization_id: "org_1", incoming_ids: [ "txn_in" ], outgoing_ids: [ "txn_out" ] }
         assert_response :created
         match_id = JSON.parse(response.body)["id"]
@@ -52,7 +52,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
 
   test "index does not flag an ordinary match as a conflict" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "manager" do
+      stub_membership("manager") do
         post :create, params: { organization_id: "org_1", incoming_ids: [ "txn_in" ], outgoing_ids: [ "txn_out" ] }
         assert_response :created
 
@@ -77,7 +77,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
     match.match_transactions.create!(hcb_organization_id: "org_1", hcb_transaction_id: "txn_C", direction: :outgoing)
 
     Hcb::Client.stub :new, fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "reader" do
+      stub_membership("reader") do
         get :index, params: { organization_id: "org_1" }
       end
     end
@@ -90,7 +90,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
 
   test "matching the same transaction twice returns a conflict" do
     Hcb::Client.stub :new, @fake_client do
-      Hcb::OrganizationMembers.stub :role_for, "manager" do
+      stub_membership("manager") do
         post :create, params: { organization_id: "org_1", incoming_ids: [ "txn_in" ], outgoing_ids: [] }
         assert_response :created
 

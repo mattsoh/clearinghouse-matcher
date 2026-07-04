@@ -3,18 +3,31 @@ module OrganizationScoped
 
   included do
     before_action :load_organization_role!
-    helper_method :organization_id
+    helper_method :organization_id, :organization_slug
   end
 
-  def organization_id = params[:organization_id]
+  def organization_id = @organization_id
+
+  # Falls back to the immutable id when HCB hasn't given the org a slug, so
+  # links always have something valid to route on.
+  def organization_slug = @organization_slug || @organization_id
 
   private
 
+  # params[:organization_id] may be the org's immutable id or its (mutable,
+  # renameable) slug -- HCB's API resolves either. Everything past this
+  # point uses the immutable id for persistence/lookups, so a later slug
+  # rename can't orphan locally-persisted matches/cutoffs keyed on it. The
+  # slug is kept separately, only for generating nicer-looking links.
   def load_organization_role!
-    @current_role = Hcb::OrganizationMembers.role_for(
-      client: hcb_client, organization_id: organization_id, hcb_user_id: current_user.hcb_user_id
+    membership = Hcb::OrganizationMembers.role_for(
+      client: hcb_client, organization_id: params[:organization_id], hcb_user_id: current_user.hcb_user_id
     )
-    head :forbidden unless @current_role
+    return head :forbidden unless membership.role
+
+    @organization_id = membership.organization_id
+    @organization_slug = membership.organization_slug
+    @current_role = membership.role
   end
 
   def require_matcher_role!

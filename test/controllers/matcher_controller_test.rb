@@ -7,7 +7,7 @@ class MatcherControllerTest < ActionController::TestCase
   end
 
   test "renders the legacy matcher shell for an org member" do
-    Hcb::OrganizationMembers.stub :role_for, "member" do
+    stub_membership("member") do
       get :show, params: { organization_id: "org_1" }
     end
 
@@ -20,7 +20,7 @@ class MatcherControllerTest < ActionController::TestCase
   end
 
   test "a non-member is forbidden" do
-    Hcb::OrganizationMembers.stub :role_for, nil do
+    stub_membership(nil) do
       get :show, params: { organization_id: "org_1" }
     end
     assert_response :forbidden

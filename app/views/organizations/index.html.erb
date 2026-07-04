@@ -12,7 +12,7 @@
     <ul class="divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
       <% @organizations.each do |org| %>
         <li>
-          <%= link_to organization_matcher_path(organization_id: org["id"]),
+          <%= link_to organization_matcher_path(organization_id: org["slug"] || org["id"]),
                 class: "flex items-center justify-between px-4 py-3 hover:bg-gray-50" do %>
             <span class="font-medium"><%= org["name"] %></span>
             <span class="text-gray-400">&rarr;</span>

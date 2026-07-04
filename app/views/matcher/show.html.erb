@@ -2,12 +2,16 @@
 
 <header id="stats">
   <div class="stat">
+    <span class="label">&nbsp;</span>
+    <span class="value load-progress-overall" id="load-progress-overall"></span>
+  </div>
+  <div class="stat">
     <span class="label">Cutoff period</span>
     <span class="value"><select class="cutoff-select" id="cutoff-select" aria-label="Choose cutoff period"></select></span>
   </div>
   <div class="stat">
     <span class="label">&nbsp;</span>
-    <span class="value"><%= link_to "View full ledger →", organization_ledger_path(organization_id: organization_id), class: "nav-link" %></span>
+    <span class="value"><%= link_to "View full ledger →", organization_ledger_path(organization_id: organization_slug), class: "nav-link" %></span>
   </div>
   <div class="stat">
     <span class="label">&nbsp;</span>
@@ -39,7 +43,7 @@
   <section class="panel" id="panel-incoming">
     <div class="panel-header">
       <div class="panel-header-top">
-        <h2>Incoming</h2>
+        <h2>Incoming<span class="load-progress" id="progress-incoming"></span></h2>
         <div class="header-actions">
           <select class="sort-select" id="sort-incoming" aria-label="Sort incoming transactions">
             <option value="date-desc">Date ↓</option>
@@ -87,7 +91,7 @@
   <section class="panel" id="panel-outgoing">
     <div class="panel-header">
       <div class="panel-header-top">
-        <h2>Outgoing</h2>
+        <h2>Outgoing<span class="load-progress" id="progress-outgoing"></span></h2>
         <div class="header-actions">
           <select class="sort-select" id="sort-outgoing" aria-label="Sort outgoing transactions">
             <option value="date-desc">Date ↓</option>

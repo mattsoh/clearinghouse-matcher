@@ -68,6 +68,10 @@ main {
 
 .panel-header h2 { margin: 0; font-size: 14px; }
 
+.load-progress { margin-left: 6px; font-size: 11px; font-weight: 400; color: #656d76; }
+
+.load-progress-overall { font-size: 13px; font-weight: 400; color: #656d76; }
+
 .header-actions {
   display: flex;
   align-items: center;

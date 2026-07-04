@@ -5,6 +5,7 @@ Rails.application.routes.draw do
 
   root to: redirect("/organizations")
 
+  get    "dev_login",         to: "sessions#dev_login" # TEMP verification-only, not for commit
   get    "login",             to: "sessions#new",      as: :login
   get    "auth/hcb/callback", to: "sessions#callback",  as: :hcb_callback
   delete "logout",            to: "sessions#destroy",   as: :logout
@@ -16,12 +17,14 @@ Rails.application.routes.draw do
     get "ledger",  to: "ledger#show",  as: :ledger
 
     namespace :api do
-      get    "transactions", to: "transactions#index"
-      get    "matches",      to: "matches#index"
-      post   "matches",      to: "matches#create"
-      delete "matches/:id",  to: "matches#destroy"
-      get    "ledger",       to: "ledger#index"
-      patch  "cutoff",       to: "cutoffs#update"
+      get    "transactions",      to: "transactions#index"
+      get    "transactions/page", to: "transactions#page"
+      get    "matches",           to: "matches#index"
+      post   "matches",           to: "matches#create"
+      delete "matches/:id",       to: "matches#destroy"
+      get    "ledger",            to: "ledger#index"
+      get    "ledger/page",       to: "ledger#page"
+      patch  "cutoff",            to: "cutoffs#update"
     end
   end
 end

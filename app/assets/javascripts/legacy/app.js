@@ -35,17 +35,62 @@ function showListsMessage(html) {
   document.getElementById("list-outgoing").innerHTML = html;
 }
 
+// Per-panel spans get their own direction's count. totalCount (when HCB
+// provides it) covers both directions combined -- HCB doesn't report it
+// per-direction, so it can't be split into a true "of N incoming" figure.
+// It's shown as shared context on both panels, plus once on its own at the
+// top of the page.
+function updateLoadProgress(totalCount) {
+  const inCount = allTransactions.filter((t) => t.direction === "in").length;
+  const outCount = allTransactions.filter((t) => t.direction === "out").length;
+  const suffix = totalCount ? ` (of ~${totalCount} total txns)` : "";
+  document.getElementById("progress-incoming").textContent = `loading… ${inCount} so far${suffix}`;
+  document.getElementById("progress-outgoing").textContent = `loading… ${outCount} so far${suffix}`;
+
+  const loaded = allTransactions.length;
+  document.getElementById("load-progress-overall").textContent = totalCount
+    ? `Loading… ${loaded} of ~${totalCount} transactions`
+    : `Loading… ${loaded} transactions so far`;
+}
+
+function clearLoadProgress() {
+  document.getElementById("progress-incoming").textContent = "";
+  document.getElementById("progress-outgoing").textContent = "";
+  document.getElementById("load-progress-overall").textContent = "";
+}
+
 async function loadAll() {
   showListsMessage(LOADING_HTML);
+  allTransactions = [];
+  byId = new Map();
   let txData, matchData;
   try {
-    const [txRes, matchRes] = await Promise.all([
+    const matchesPromise = fetch(`${API_BASE}/api/matches`).then((r) => {
+      if (!r.ok) throw new Error("bad response");
+      return r.json();
+    });
+
+    // Render rows as pages stream in so the lists aren't a blank spinner for
+    // the full multi-page HCB drain. Cutoff filtering and matched/unmatched
+    // status can shift once the real data lands below -- rows may appear
+    // then disappear as the provisional (unfiltered) view is replaced by the
+    // authoritative one.
+    await loadPagesStreaming(`${API_BASE}/api/transactions/page`, (rows, totalCount) => {
+      allTransactions.push(...rows);
+      byId = new Map(allTransactions.map((t) => [t.id, t]));
+      updateLoadProgress(totalCount);
+      render();
+    });
+
+    const [txRes, matchDataResolved] = await Promise.all([
       fetch(`${API_BASE}/api/transactions`),
-      fetch(`${API_BASE}/api/matches`),
+      matchesPromise,
     ]);
-    if (!txRes.ok || !matchRes.ok) throw new Error("bad response");
-    [txData, matchData] = await Promise.all([txRes.json(), matchRes.json()]);
+    if (!txRes.ok) throw new Error("bad response");
+    txData = await txRes.json();
+    matchData = matchDataResolved;
   } catch (e) {
+    clearLoadProgress();
     showListsMessage(`<div class="empty-msg">Could not load transactions. <a href="#" class="nav-link load-retry">Retry</a></div>`);
     document.querySelectorAll(".load-retry").forEach((el) => {
       el.addEventListener("click", (ev) => {
@@ -55,6 +100,7 @@ async function loadAll() {
     });
     return;
   }
+  clearLoadProgress();
   allTransactions = txData.transactions;
   byId = new Map(allTransactions.map((t) => [t.id, t]));
   matches = matchData.matches;

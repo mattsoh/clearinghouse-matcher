@@ -1,5 +1,11 @@
 class SessionsController < ApplicationController
-  skip_before_action :require_login!, only: [ :new, :callback, :destroy ]
+  skip_before_action :require_login!, only: [ :new, :callback, :destroy, :dev_login ]
+
+  # TEMP verification-only backdoor, not for commit.
+  def dev_login
+    session[:user_id] = User.find_by!(hcb_user_id: params[:hcb_user_id]).id
+    render plain: "ok"
+  end
 
   def new
     state = SecureRandom.hex(16)

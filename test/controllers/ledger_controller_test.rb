@@ -7,7 +7,7 @@ class LedgerControllerTest < ActionController::TestCase
   end
 
   test "renders the legacy ledger shell for an org member" do
-    Hcb::OrganizationMembers.stub :role_for, "reader" do
+    stub_membership("reader") do
       get :show, params: { organization_id: "org_1" }
     end
 

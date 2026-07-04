@@ -1,9 +1,14 @@
 module Hcb
-  # Looks up org membership/role. Cached per-organization (not per-user) since
-  # one `expand[]=users` call returns every member's role at once.
+  # Looks up org membership/role, and resolves the route param (which HCB
+  # accepts as either the org's immutable id or its mutable slug) to the
+  # immutable id so callers never persist a slug. Cached per-organization
+  # (not per-user) since one `expand[]=users` call returns every member's
+  # role at once.
   class OrganizationMembers
     ROLES = %w[reader member manager].freeze
     TTL = ENV.fetch("HCB_MEMBERS_CACHE_TTL", 60).to_i.seconds
+
+    Membership = Struct.new(:organization_id, :organization_slug, :role, keyword_init: true)
 
     def self.role_for(client:, organization_id:, hcb_user_id:)
       new(client, organization_id).role_for(hcb_user_id)
@@ -15,16 +20,15 @@ module Hcb
     end
 
     def role_for(hcb_user_id)
-      member = members.find { |u| u["id"] == hcb_user_id }
-      member && member["role"]
+      member = (organization["users"] || []).find { |u| u["id"] == hcb_user_id }
+      Membership.new(organization_id: organization["id"], organization_slug: organization["slug"], role: member && member["role"])
     end
 
     private
 
-    def members
+    def organization
       Rails.cache.fetch(cache_key, expires_in: TTL, race_condition_ttl: 5.seconds) do
-        organization = @client.organization(@organization_id, expand: [ "users" ])
-        organization["users"] || []
+        @client.organization(@organization_id, expand: [ "users" ])
       end
     end
 
