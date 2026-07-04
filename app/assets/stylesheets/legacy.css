@@ -141,7 +141,7 @@ main {
 
 .row {
   display: grid;
-  grid-template-columns: 78px 1fr 90px 22px;
+  grid-template-columns: 78px 1fr 90px 40px;
   gap: 8px;
   padding: 8px 14px;
   border-bottom: 1px solid #eef0f2;
@@ -330,6 +330,17 @@ button.danger {
   line-height: 1;
 }
 .info-icon:hover { color: var(--in-color); }
+
+.hcb-link {
+  color: #656d76;
+  text-decoration: none;
+  font-size: 12px;
+  padding: 0 2px;
+  margin-left: 2px;
+  vertical-align: middle;
+  line-height: 1;
+}
+.hcb-link:hover { color: var(--in-color); }
 
 .modal-overlay {
   position: fixed;

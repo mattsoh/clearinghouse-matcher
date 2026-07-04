@@ -65,6 +65,9 @@ function wireDetailButtons(root) {
       showDetailsModal(t);
     });
   });
+  root.querySelectorAll(".hcb-link").forEach((el) => {
+    el.addEventListener("click", (e) => e.stopPropagation());
+  });
 }
 
 function wireSearchClears() {

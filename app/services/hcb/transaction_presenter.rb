@@ -1,10 +1,43 @@
 module Hcb
   # Normalizes a raw HCB v4 transaction JSON hash into the field shape the
   # legacy frontend (app.js/ledger.js/details.js) already knows how to render.
-  # A few legacy fields (comments, user_name) have no confirmed HCB
-  # equivalent under the organizations:read/ledgers:read scopes this app is
-  # limited to, so they're left blank rather than guessed.
+  # `comments` has no confirmed HCB equivalent under the organizations:read/
+  # ledgers:read scopes this app is limited to, so it's left blank rather
+  # than guessed. `user_name` is only populated for transaction types that
+  # carry an internal HCB "sender"/"submitter" (ACH transfers, checks,
+  # disbursements, Wise transfers, card charges, check deposits) -- see
+  # app/views/api/v4/transactions/*.json.jbuilder in hackclub/hcb. Donations
+  # and invoices are paid by external, non-HCB-account parties, so they have
+  # no user to attribute.
   class TransactionPresenter
+    # HCB's `code` is the numeric HcbCode type segment (e.g. "HCB-200-123" ->
+    # "200"), not a human label. See TransactionGroupingEngine::Calculate::HcbCode
+    # in hackclub/hcb for the authoritative list of codes.
+    CATEGORY_NAMES = {
+      "000" => "Uncategorized",
+      "100" => "Invoice",
+      "200" => "Donation",
+      "201" => "Partner donation",
+      "300" => "ACH transfer",
+      "310" => "Wire",
+      "350" => "PayPal transfer",
+      "360" => "Wise transfer",
+      "400" => "Check",
+      "401" => "Increase check",
+      "402" => "Check deposit",
+      "500" => "Outgoing disbursement",
+      "550" => "Incoming disbursement",
+      "600" => "Stripe card",
+      "601" => "Stripe force capture",
+      "610" => "Stripe service fee",
+      "700" => "Bank fee",
+      "701" => "Incoming bank fee",
+      "702" => "Fee revenue",
+      "710" => "Expense payout",
+      "712" => "Payout holding",
+      "900" => "Outgoing fee reimbursement"
+    }.freeze
+
     def initialize(raw)
       @raw = raw
     end
@@ -18,9 +51,21 @@ module Hcb
     def declined? = !!@raw["declined"]
     def tags = Array(@raw["tags"]).join(", ")
     def comments = ""
-    def user_name = ""
+    def user_name
+      @raw.dig("ach_transfer", "sender", "name") ||
+        @raw.dig("check", "sender", "name") ||
+        @raw.dig("transfer", "sender", "name") ||
+        @raw.dig("wise_transfer", "sender", "name") ||
+        @raw.dig("card_charge", "card", "user", "name") ||
+        @raw.dig("check_deposit", "submitter", "name") ||
+        ""
+    end
     def category_label
-      @raw["code"].to_s.tr("_-", "  ").squish.capitalize
+      code = @raw["code"].to_s
+      return "" if code.blank?
+
+      name = CATEGORY_NAMES.fetch(code) { code.tr("_-", "  ").squish.capitalize }
+      "#{name} (#{code})"
     end
 
     def as_json(*)

@@ -29,14 +29,20 @@ module LegacyMigration
         .map { |t| Hcb::TransactionPresenter.new(t) }
 
       importer = find_or_create_importer_user
+      # Live transactions already spoken for -- by matches created outside this
+      # importer, or by earlier legs/matches within this same run -- so two
+      # legacy legs with the same date+amount (e.g. duplicate-amount legs in a
+      # batch disbursement) never resolve to the same live transaction twice.
+      claimed = MatchTransaction.where(hcb_organization_id: @organization_id).pluck(:hcb_transaction_id).to_set
       created = 0
       skipped = []
 
       legacy_matches.each do |legacy_match|
         next if Match.exists?(legacy_id: legacy_match["id"])
 
-        resolution = resolve_legs(legacy_match, legacy_by_id, manual_by_id, live)
+        resolution = resolve_legs(legacy_match, legacy_by_id, manual_by_id, live, claimed)
         if resolution[:unresolved].any?
+          unclaim(resolution, claimed)
           skipped << { legacy_id: legacy_match["id"], unresolved_legacy_leg_ids: resolution[:unresolved] }
           next
         end
@@ -64,14 +70,20 @@ module LegacyMigration
       end
     end
 
-    def resolve_legs(legacy_match, legacy_by_id, manual_by_id, live)
-      incoming = Array(legacy_match["incoming_ids"]).map { |id| resolve_leg(id, legacy_by_id, manual_by_id, live) }
-      outgoing = Array(legacy_match["outgoing_ids"]).map { |id| resolve_leg(id, legacy_by_id, manual_by_id, live) }
+    def resolve_legs(legacy_match, legacy_by_id, manual_by_id, live, claimed)
+      incoming = Array(legacy_match["incoming_ids"]).map { |id| resolve_leg(id, legacy_by_id, manual_by_id, live, claimed) }
+      outgoing = Array(legacy_match["outgoing_ids"]).map { |id| resolve_leg(id, legacy_by_id, manual_by_id, live, claimed) }
       unresolved = (incoming + outgoing).select { |r| r[:type] == :unresolved }.map { |r| r[:legacy_id] }
       { incoming: incoming, outgoing: outgoing, unresolved: unresolved }
     end
 
-    def resolve_leg(legacy_id, legacy_by_id, manual_by_id, live)
+    def unclaim(resolution, claimed)
+      (resolution[:incoming] + resolution[:outgoing]).each do |r|
+        claimed.delete(r[:hcb_transaction_id]) if r[:type] == :transaction
+      end
+    end
+
+    def resolve_leg(legacy_id, legacy_by_id, manual_by_id, live, claimed)
       if legacy_id.negative? && manual_by_id.key?(legacy_id)
         manual = manual_by_id[legacy_id]
         return { type: :adjustment, legacy_id: legacy_id, amount: manual["amount"], memo: manual["memo"] }
@@ -80,16 +92,18 @@ module LegacyMigration
       legacy_tx = legacy_by_id[legacy_id]
       return { type: :unresolved, legacy_id: legacy_id } unless legacy_tx
 
-      candidate = best_candidate(legacy_tx, live)
+      candidate = best_candidate(legacy_tx, live, claimed)
       return { type: :unresolved, legacy_id: legacy_id } unless candidate
 
+      claimed << candidate.id
       { type: :transaction, legacy_id: legacy_id, hcb_transaction_id: candidate.id }
     end
 
-    def best_candidate(legacy_tx, live)
+    def best_candidate(legacy_tx, live, claimed)
       legacy_date = Date.parse(legacy_tx["date"])
       candidates = live.select do |t|
-        (t.amount - legacy_tx["amount"]).abs < 0.005 && (Date.parse(t.date) - legacy_date).abs.to_i <= DATE_WINDOW_DAYS
+        !claimed.include?(t.id) &&
+          (t.amount - legacy_tx["amount"]).abs < 0.005 && (Date.parse(t.date) - legacy_date).abs.to_i <= DATE_WINDOW_DAYS
       end
       candidates.max_by { |t| memo_similarity(t.memo, legacy_tx["memo"]) }
     end

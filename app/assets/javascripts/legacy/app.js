@@ -44,6 +44,7 @@ function updateLoadProgress(totalCount) {
   const inCount = allTransactions.filter((t) => t.direction === "in").length;
   const outCount = allTransactions.filter((t) => t.direction === "out").length;
   const suffix = totalCount ? ` (of ~${totalCount} total txns)` : "";
+  document.getElementById("load-progress-div").style.display = "";
   document.getElementById("progress-incoming").textContent = `loading… ${inCount} so far${suffix}`;
   document.getElementById("progress-outgoing").textContent = `loading… ${outCount} so far${suffix}`;
 
@@ -54,9 +55,10 @@ function updateLoadProgress(totalCount) {
 }
 
 function clearLoadProgress() {
+
   document.getElementById("progress-incoming").textContent = "";
   document.getElementById("progress-outgoing").textContent = "";
-  document.getElementById("load-progress-overall").textContent = "";
+  document.getElementById("load-progress-div").style.display = "none";
 }
 
 async function loadAll() {
@@ -151,13 +153,29 @@ function infoIconHtml(t) {
   return `<button type="button" class="info-icon" data-detail="${escapeHtml(JSON.stringify(t))}" title="View full details">ⓘ</button>`;
 }
 
+// Transaction ids are HCB's public ids ("txn_<hashid>"), and HCB's own site
+// resolves that same hashid at /hcb/<hashid> -- so no separate lookup is
+// needed to link back to the real transaction. Manually-added transactions
+// (negative numeric ids, see details.js's `isManual`) have no HCB page.
+function hcbTransactionUrl(t) {
+  const id = String(t.id);
+  if (!id.startsWith("txn_")) return null;
+  return `https://hcb.hackclub.com/hcb/${id.slice(4)}`;
+}
+
+function HCBLinkHtml(t) {
+  const url = hcbTransactionUrl(t);
+  if (!url) return "";
+  return `<a class="hcb-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="View on HCB">↗</a>`;
+}
+
 function matchesRowHtml(t, extraClass) {
   const cls = t.direction + (extraClass ? " " + extraClass : "");
   return `<div class="row ${cls}" data-id="${t.id}">
     <div class="date">${t.date}</div>
     <div class="memo" title="${escapeHtml(t.memo)}">${escapeHtml(t.memo)}</div>
     <div class="amount">${fmt(t.amount)}</div>
-    <div class="row-info">${infoIconHtml(t)}</div>
+    <div class="row-info">${infoIconHtml(t)}${HCBLinkHtml(t)}</div>
   </div>`;
 }
 
@@ -302,7 +320,7 @@ function renderTray() {
     inList.innerHTML = clearAllHtml + selectedIncomingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-incoming-item" data-id="${id}">
-        <span>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)} — <strong>${fmt(t.amount)}</strong></span>
+        <span>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></span>
         <span class="remove" data-remove-in="${id}">×</span>
       </div>`;
     }).join("");
@@ -325,7 +343,7 @@ function renderTray() {
     outList.innerHTML = clearAllHtml + selectedOutgoingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-outgoing-item" data-id="${id}">
-        <span>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)} — ${fmt(t.amount)}</span>
+        <span>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</span>
         <span class="remove" data-remove="${id}">×</span>
       </div>`;
     }).join("");
@@ -439,10 +457,10 @@ function matchRowHtml(m) {
   const discClass = m.discrepancy === 0 ? "discrepancy-ok" : "discrepancy-bad";
   const discText = m.discrepancy === 0 ? "balanced" : `off by ${fmt(Math.abs(m.discrepancy))}`;
   const sideIn = incoming.length
-    ? incoming.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)} — <strong>${fmt(t.amount)}</strong></div>`).join("")
+    ? incoming.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></div>`).join("")
     : `<span class="side-empty">No incoming</span>`;
   const sideOut = outgoing.length
-    ? outgoing.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)} — ${fmt(t.amount)}</div>`).join("")
+    ? outgoing.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</div>`).join("")
     : `<span class="side-empty">No outgoing</span>`;
   return `<div class="match-row${m.conflict ? " match-row-conflict" : ""}">
     <div class="side-in">${sideIn}</div>
