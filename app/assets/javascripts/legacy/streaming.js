@@ -4,7 +4,7 @@
 // keyed by org rather than by which page fetched them, means switching
 // between matcher and ledger shortly after one has loaded skips the
 // multi-page drain (and its loading UI) entirely on the second page.
-const TRANSACTIONS_CACHE_TTL_MS = 60_000;
+const TRANSACTIONS_CACHE_TTL_MS = 600_000;
 
 function transactionsCacheKey() {
   return `txn-rows-cache:${window.HCB_ORGANIZATION_ID}`;

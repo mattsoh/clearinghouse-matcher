@@ -9,7 +9,7 @@ module Hcb
   # transaction, so a rolling window isn't an option here. Worst case for a
   # busy org is a few dozen requests per cache fill, well within budget.
   class OrganizationTransactions
-    TTL = ENV.fetch("HCB_TRANSACTION_CACHE_TTL", 120).to_i.seconds
+    TTL = ENV.fetch("HCB_TRANSACTION_CACHE_TTL", 600).to_i.seconds
     PAGE_SIZE = 100
 
     def initialize(client, organization_id, filters: {})
