@@ -6,12 +6,12 @@ default: &default
 
 development:
   <<: *default
-  database: reimbursement_matcher_development
+  database: clearinghouse_matcher_development
 
 test:
   <<: *default
-  database: reimbursement_matcher_test
+  database: clearinghouse_matcher_test
 
 production:
   <<: *default
-  database: reimbursement_matcher_production
+  database: clearinghouse_matcher_production
