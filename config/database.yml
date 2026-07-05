@@ -83,7 +83,8 @@ production:
     <<: *default
     database: clearinghouse_matcher_production
     username: clearinghouse_matcher
-    password: <%= ENV["CLEARINGHOUSE_MATCHER_DATABASE_PASSWORD"] %>
+    host: <%= ENV["DATABASE_HOST"] %>
+    password: <%= ENV["DATABASE_PASSWORD"] %>
   cache:
     <<: *primary_production
     database: clearinghouse_matcher_production_cache
