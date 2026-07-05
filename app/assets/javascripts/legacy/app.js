@@ -28,6 +28,15 @@ function amountMatches(amount, query) {
   return Math.abs(Math.abs(amount) - Math.abs(target)) < 0.005;
 }
 
+// `date` and the `after`/`before` filter values are all "YYYY-MM-DD" (HCB's
+// transaction date, and <input type="date">'s value), so plain string
+// comparison sorts correctly without parsing. Both bounds are inclusive.
+function dateInRange(date, after, before) {
+  if (after && date < after) return false;
+  if (before && date > before) return false;
+  return true;
+}
+
 const LOADING_HTML = `<div class="empty-msg loading-msg"><span class="loading-spinner"></span>Loading transactions…</div>`;
 
 function showListsMessage(html) {
@@ -194,14 +203,19 @@ function renderLists() {
   const unmatched = unmatchedTransactions();
   const incomingFilter = document.getElementById("search-incoming").value.toLowerCase();
   const incomingAmountFilter = document.getElementById("search-incoming-amount").value;
+  const incomingAfterFilter = document.getElementById("search-incoming-after").value;
+  const incomingBeforeFilter = document.getElementById("search-incoming-before").value;
   const outgoingFilter = document.getElementById("search-outgoing").value.toLowerCase();
   const outgoingAmountFilter = document.getElementById("search-outgoing-amount").value;
+  const outgoingAfterFilter = document.getElementById("search-outgoing-after").value;
+  const outgoingBeforeFilter = document.getElementById("search-outgoing-before").value;
 
   const incomingFiltered = unmatched.filter(
     (t) =>
       t.direction === "in" &&
       t.memo.toLowerCase().includes(incomingFilter) &&
-      amountMatches(t.amount, incomingAmountFilter)
+      amountMatches(t.amount, incomingAmountFilter) &&
+      dateInRange(t.date, incomingAfterFilter, incomingBeforeFilter)
   );
   const incoming = sortTransactions(incomingFiltered, document.getElementById("sort-incoming").value);
 
@@ -209,7 +223,8 @@ function renderLists() {
     (t) =>
       t.direction === "out" &&
       t.memo.toLowerCase().includes(outgoingFilter) &&
-      amountMatches(t.amount, outgoingAmountFilter)
+      amountMatches(t.amount, outgoingAmountFilter) &&
+      dateInRange(t.date, outgoingAfterFilter, outgoingBeforeFilter)
   );
   const outgoing = sortTransactions(outgoingFiltered, document.getElementById("sort-outgoing").value);
 
@@ -382,7 +397,10 @@ function round2(n) {
 }
 
 function resetSearchFields() {
-  ["search-incoming", "search-incoming-amount", "search-outgoing", "search-outgoing-amount"].forEach((id) => {
+  [
+    "search-incoming", "search-incoming-amount", "search-incoming-after", "search-incoming-before",
+    "search-outgoing", "search-outgoing-amount", "search-outgoing-after", "search-outgoing-before",
+  ].forEach((id) => {
     const input = document.getElementById(id);
     input.value = "";
     input.dispatchEvent(new Event("input"));
@@ -593,8 +611,12 @@ document.getElementById("btn-confirm").addEventListener("click", confirmMatch);
 document.getElementById("btn-cancel").addEventListener("click", cancelMatch);
 document.getElementById("search-incoming").addEventListener("input", renderLists);
 document.getElementById("search-incoming-amount").addEventListener("input", renderLists);
+document.getElementById("search-incoming-after").addEventListener("input", renderLists);
+document.getElementById("search-incoming-before").addEventListener("input", renderLists);
 document.getElementById("search-outgoing").addEventListener("input", renderLists);
 document.getElementById("search-outgoing-amount").addEventListener("input", renderLists);
+document.getElementById("search-outgoing-after").addEventListener("input", renderLists);
+document.getElementById("search-outgoing-before").addEventListener("input", renderLists);
 document.getElementById("sort-incoming").addEventListener("change", renderLists);
 document.getElementById("sort-outgoing").addEventListener("change", renderLists);
 

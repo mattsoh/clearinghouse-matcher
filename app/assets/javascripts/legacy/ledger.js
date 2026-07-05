@@ -17,6 +17,15 @@ function amountMatches(amount, query) {
   return Math.abs(Math.abs(amount) - Math.abs(target)) < 0.005;
 }
 
+// `date` and the `after`/`before` filter values are all "YYYY-MM-DD" (HCB's
+// transaction date, and <input type="date">'s value), so plain string
+// comparison sorts correctly without parsing. Both bounds are inclusive.
+function dateInRange(date, after, before) {
+  if (after && date < after) return false;
+  if (before && date > before) return false;
+  return true;
+}
+
 function showLedgerMessage(html) {
   document.getElementById("ledger-body").innerHTML = `<tr><td colspan="6">${html}</td></tr>`;
 }
@@ -107,6 +116,8 @@ function rowStatus(r) {
 function render() {
   const filter = document.getElementById("search-ledger").value.toLowerCase();
   const amountFilter = document.getElementById("search-ledger-amount").value;
+  const afterFilter = document.getElementById("search-ledger-after").value;
+  const beforeFilter = document.getElementById("search-ledger-before").value;
   const showStatus = {
     matched: document.getElementById("filter-matched").checked,
     discrepancy: document.getElementById("filter-discrepancy").checked,
@@ -118,7 +129,8 @@ function render() {
     (r) =>
       showStatus[rowStatus(r)] &&
       r.memo.toLowerCase().includes(filter) &&
-      amountMatches(r.amount, amountFilter)
+      amountMatches(r.amount, amountFilter) &&
+      dateInRange(r.date, afterFilter, beforeFilter)
   );
 
   body.innerHTML = rows.map((r) => {
@@ -143,6 +155,8 @@ function render() {
 
 document.getElementById("search-ledger").addEventListener("input", render);
 document.getElementById("search-ledger-amount").addEventListener("input", render);
+document.getElementById("search-ledger-after").addEventListener("input", render);
+document.getElementById("search-ledger-before").addEventListener("input", render);
 document.getElementById("filter-matched").addEventListener("change", render);
 document.getElementById("filter-discrepancy").addEventListener("change", render);
 document.getElementById("filter-unmatched").addEventListener("change", render);

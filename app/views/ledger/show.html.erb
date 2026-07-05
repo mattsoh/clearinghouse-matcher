@@ -37,6 +37,18 @@
           <button type="button" class="search-clear" data-clear-target="search-ledger-amount" aria-label="Clear amount search">×</button>
         </div>
       </div>
+      <div class="date-filter-group">
+        <label class="date-filter-label" for="search-ledger-after">After</label>
+        <div class="search-wrap search-wrap-date">
+          <input type="date" class="search search-date" id="search-ledger-after" aria-label="Filter transactions on or after date">
+          <button type="button" class="search-clear" data-clear-target="search-ledger-after" aria-label="Clear after-date filter">×</button>
+        </div>
+        <label class="date-filter-label" for="search-ledger-before">Before</label>
+        <div class="search-wrap search-wrap-date">
+          <input type="date" class="search search-date" id="search-ledger-before" aria-label="Filter transactions on or before date">
+          <button type="button" class="search-clear" data-clear-target="search-ledger-before" aria-label="Clear before-date filter">×</button>
+        </div>
+      </div>
       <div class="status-filter">
         <label class="status-toggle status-toggle-matched">
           <input type="checkbox" id="filter-matched" checked>

@@ -135,6 +135,24 @@ main {
 
 .search-clear.visible { display: block; }
 
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.date-filter-label {
+  font-size: 11px;
+  color: #656d76;
+  white-space: nowrap;
+}
+
+.search-wrap-date {
+  flex: 1;
+  min-width: 0;
+}
+
 .list {
   overflow-y: auto;
 }
