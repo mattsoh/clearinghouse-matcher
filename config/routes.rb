@@ -5,7 +5,6 @@ Rails.application.routes.draw do
 
   root to: redirect("/organizations")
 
-  get    "dev_login",         to: "sessions#dev_login" # TEMP verification-only, not for commit
   get    "login",             to: "sessions#new",      as: :login
   get    "auth/hcb/callback", to: "sessions#callback",  as: :hcb_callback
   delete "logout",            to: "sessions#destroy",   as: :logout
