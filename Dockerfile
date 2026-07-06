@@ -2,8 +2,8 @@
 # check=error=true
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build -t clearinghouse_matcher .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name clearinghouse_matcher clearinghouse_matcher
+# docker build -t steelyard .
+# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name steelyard steelyard
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
