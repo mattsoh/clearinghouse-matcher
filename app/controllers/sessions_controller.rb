@@ -8,7 +8,7 @@ class SessionsController < ApplicationController
     redirect_to Hcb.oauth_client.auth_code.authorize_url(
       scope: "restricted users:read organizations:read ledgers:read",
       state: state,
-      redirect_uri: ENV.fetch("HCB_OAUTH_REDIRECT_URI"),
+      redirect_uri: ENV.fetch("HCB_OAUTH_REDIRECT_URI")
     ), allow_other_host: true
   end
 
