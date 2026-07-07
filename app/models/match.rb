@@ -12,11 +12,15 @@ class Match < ApplicationRecord
 
   def undone? = undone_at.present?
 
+  # Filters in Ruby rather than `match_transactions.active.incoming.pluck`,
+  # which would issue a fresh query per call regardless of `includes`/prior
+  # loading -- callers that preload, or just built :match_transactions (e.g.
+  # right after Matches::Create), get this for free with no N+1 per match.
   def incoming_transaction_ids
-    match_transactions.active.incoming.pluck(:hcb_transaction_id)
+    match_transactions.select { |mt| mt.undone_at.nil? && mt.incoming? }.map(&:hcb_transaction_id)
   end
 
   def outgoing_transaction_ids
-    match_transactions.active.outgoing.pluck(:hcb_transaction_id)
+    match_transactions.select { |mt| mt.undone_at.nil? && mt.outgoing? }.map(&:hcb_transaction_id)
   end
 end

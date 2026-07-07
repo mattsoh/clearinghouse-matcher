@@ -5,7 +5,7 @@ class Api::MatchesController < ApplicationController
 
   def index
     ledger = OrganizationLedger.new(hcb_client, organization_id)
-    matches = Match.active.for_organization(organization_id).includes(:created_by).order(:id)
+    matches = Match.active.for_organization(organization_id).includes(:created_by, :match_transactions).order(:id)
     render json: { matches: matches.map { |m| serialize(m, ledger) } }
   end
 
