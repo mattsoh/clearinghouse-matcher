@@ -50,6 +50,23 @@ class Api::MatchesControllerTest < ActionController::TestCase
     end
   end
 
+  test "create returns the fully serialized match, not just id/discrepancy" do
+    Hcb::Client.stub :new, @fake_client do
+      stub_membership("member") do
+        post :create, params: { organization_id: "org_1", incoming_ids: [ "txn_in" ], outgoing_ids: [ "txn_out" ] }
+        assert_response :created
+
+        match = JSON.parse(response.body)
+        assert_equal [ "txn_in" ], match["incoming_ids"]
+        assert_equal [ "txn_out" ], match["outgoing_ids"]
+        assert_equal 0, match["discrepancy"]
+        assert_equal false, match["conflict"]
+        assert match.key?("created_by_name")
+        assert match["created_at"].present?
+      end
+    end
+  end
+
   test "index does not flag an ordinary match as a conflict" do
     Hcb::Client.stub :new, @fake_client do
       stub_membership("manager") do

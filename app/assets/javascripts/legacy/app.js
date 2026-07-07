@@ -469,12 +469,18 @@ async function confirmMatch() {
     alert("Could not save match: " + err.error);
     return;
   }
+  // The server returns the full serialized match -- splice it straight into
+  // local state and re-render instead of a full loadAll(), which would
+  // re-drain and re-render the entire (often multi-thousand-row) transaction
+  // history just to reflect one new match.
+  const newMatch = await res.json();
+  matches.push(newMatch);
   selectedIncomingIds = [];
   selectedOutgoingIds = [];
   lastIncomingClickId = null;
   lastOutgoingClickId = null;
   resetSearchFields();
-  await loadAll();
+  render();
 }
 
 function cancelMatch() {
@@ -493,7 +499,11 @@ async function deleteMatch(id) {
     alert("Could not delete match: " + err.error);
     return;
   }
-  await loadAll();
+  // Undoing a match doesn't change any transaction's data, just removes the
+  // link -- drop it from local state and re-render rather than a full
+  // loadAll() re-drain.
+  matches = matches.filter((m) => m.id !== id);
+  render();
 }
 
 function matchMetaHtml(m) {
