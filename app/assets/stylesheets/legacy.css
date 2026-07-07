@@ -174,8 +174,16 @@ main {
 .row:hover { background: #f0f6ff; }
 
 .row .date { color: #656d76; font-size: 12px; }
-.row .memo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .memo { overflow: hidden; min-width: 0; }
+.row .memo-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.hcb-code {
+  color: #8b949e;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.hcb-code-inline { margin-left: 2px; }
 
 .row.in .amount { color: var(--in-color); }
 .row.out .amount { color: var(--out-color); }

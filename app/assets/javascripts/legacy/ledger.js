@@ -35,6 +35,26 @@ function showLedgerMessage(html) {
   document.getElementById("ledger-body").innerHTML = `<tr><td colspan="6">${html}</td></tr>`;
 }
 
+// Transaction ids are HCB's public ids ("txn_<hashid>"); that hashid is also
+// what HCB's own site shows/searches on, so it's exposed here as "HCB code".
+function hcbCode(r) {
+  const id = String(r.id);
+  return id.startsWith("txn_") ? id.slice(4) : null;
+}
+
+function hcbCodeHtml(r) {
+  const code = hcbCode(r);
+  return code ? ` <span class="hcb-code hcb-code-inline" title="HCB code">${escapeHtml(code)}</span>` : "";
+}
+
+// Memo search matches either the memo text or the HCB code, so pasting in a
+// code from HCB's own UI finds the row without having to know its memo.
+function memoOrCodeMatches(r, query) {
+  if (!query) return true;
+  const code = hcbCode(r);
+  return r.memo.toLowerCase().includes(query) || (!!code && code.toLowerCase().includes(query));
+}
+
 async function load() {
   showLedgerMessage(`<div class="empty-msg loading-msg"><span class="loading-spinner"></span>Loading transactions…</div>`);
   provisional = [];
@@ -115,7 +135,7 @@ function renderProvisional(totalCount) {
     const statusClass = status === "discrepancy" ? "ledger-discrepancy" : status === "matched" ? "ledger-matched" : "";
     return `<tr class="${statusClass}">
       <td>${r.date}</td>
-      <td class="memo-cell" title="${escapeHtml(r.memo)}">${escapeHtml(r.memo)}</td>
+      <td class="memo-cell" title="${escapeHtml(r.memo)}">${escapeHtml(r.memo)}${hcbCodeHtml(r)}</td>
       <td class="num ${dirClass}">${fmt(r.amount)}</td>
       <td class="num">…</td>
       <td>${escapeHtml(r.user_name)}</td>
@@ -155,7 +175,7 @@ function render() {
   const rows = ledger.filter(
     (r) =>
       showStatus[rowStatus(r)] &&
-      r.memo.toLowerCase().includes(filter) &&
+      memoOrCodeMatches(r, filter) &&
       amountMatches(r.amount, amountFilter) &&
       dateInRange(r.date, afterFilter, beforeFilter)
   );
@@ -167,7 +187,7 @@ function render() {
     const rowClass = [statusClass, r.is_zero_point ? "zero-point" : ""].filter(Boolean).join(" ");
     return `<tr class="${rowClass}" ${r.is_zero_point ? 'id="zero-point-row"' : ""}>
       <td>${r.date}</td>
-      <td class="memo-cell" title="${escapeHtml(r.memo)}">${escapeHtml(r.memo)}${r.is_zero_point ? ' <span class="zero-badge">balance hit $0 here</span>' : ""}</td>
+      <td class="memo-cell" title="${escapeHtml(r.memo)}">${escapeHtml(r.memo)}${hcbCodeHtml(r)}${r.is_zero_point ? ' <span class="zero-badge">balance hit $0 here</span>' : ""}</td>
       <td class="num ${dirClass}">${fmt(r.amount)}</td>
       <td class="num">${fmt(r.running_balance)}</td>
       <td>${escapeHtml(r.user_name)}</td>

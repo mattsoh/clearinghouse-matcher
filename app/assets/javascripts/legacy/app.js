@@ -175,11 +175,15 @@ function infoIconHtml(t) {
 // Transaction ids are HCB's public ids ("txn_<hashid>"), and HCB's own site
 // resolves that same hashid at /hcb/<hashid> -- so no separate lookup is
 // needed to link back to the real transaction. Manually-added transactions
-// (negative numeric ids, see details.js's `isManual`) have no HCB page.
-function hcbTransactionUrl(t) {
+// (negative numeric ids, see details.js's `isManual`) have no HCB code.
+function hcbCode(t) {
   const id = String(t.id);
-  if (!id.startsWith("txn_")) return null;
-  return `https://hcb.hackclub.com/hcb/${id.slice(4)}`;
+  return id.startsWith("txn_") ? id.slice(4) : null;
+}
+
+function hcbTransactionUrl(t) {
+  const code = hcbCode(t);
+  return code ? `https://hcb.hackclub.com/hcb/${code}` : null;
 }
 
 function HCBLinkHtml(t) {
@@ -188,11 +192,35 @@ function HCBLinkHtml(t) {
   return `<a class="hcb-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="View on HCB">↗</a>`;
 }
 
+function hcbCodeHtml(t) {
+  const code = hcbCode(t);
+  return code ? `<div class="hcb-code" title="HCB code">${escapeHtml(code)}</div>` : "";
+}
+
+// Same as hcbCodeHtml but for single-line contexts (tray items, match rows)
+// where a block-level line would break the layout.
+function hcbCodeInlineHtml(t) {
+  const code = hcbCode(t);
+  return code ? ` <span class="hcb-code hcb-code-inline" title="HCB code">${escapeHtml(code)}</span>` : "";
+}
+
+// Memo search boxes match either the memo text or the HCB code, so pasting
+// in a code from HCB's own UI finds the transaction without having to know
+// its memo.
+function memoOrCodeMatches(t, query) {
+  if (!query) return true;
+  const code = hcbCode(t);
+  return t.memo.toLowerCase().includes(query) || (!!code && code.toLowerCase().includes(query));
+}
+
 function matchesRowHtml(t, extraClass) {
   const cls = t.direction + (extraClass ? " " + extraClass : "");
   return `<div class="row ${cls}" data-id="${t.id}">
     <div class="date">${t.date}</div>
-    <div class="memo" title="${escapeHtml(t.memo)}">${escapeHtml(t.memo)}</div>
+    <div class="memo" title="${escapeHtml(t.memo)}">
+      <div class="memo-text">${escapeHtml(t.memo)}</div>
+      ${hcbCodeHtml(t)}
+    </div>
     <div class="amount">${fmt(t.amount)}</div>
     <div class="row-info">${infoIconHtml(t)}${HCBLinkHtml(t)}</div>
   </div>`;
@@ -223,7 +251,7 @@ function renderLists() {
   const incomingFiltered = unmatched.filter(
     (t) =>
       t.direction === "in" &&
-      t.memo.toLowerCase().includes(incomingFilter) &&
+      memoOrCodeMatches(t, incomingFilter) &&
       amountMatches(t.amount, incomingAmountFilter) &&
       dateInRange(t.date, incomingAfterFilter, incomingBeforeFilter)
   );
@@ -232,7 +260,7 @@ function renderLists() {
   const outgoingFiltered = unmatched.filter(
     (t) =>
       t.direction === "out" &&
-      t.memo.toLowerCase().includes(outgoingFilter) &&
+      memoOrCodeMatches(t, outgoingFilter) &&
       amountMatches(t.amount, outgoingAmountFilter) &&
       dateInRange(t.date, outgoingAfterFilter, outgoingBeforeFilter)
   );
@@ -345,7 +373,7 @@ function renderTray() {
     inList.innerHTML = clearAllHtml + selectedIncomingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-incoming-item" data-id="${id}">
-        <span>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></span>
+        <span>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></span>
         <span class="remove" data-remove-in="${id}">×</span>
       </div>`;
     }).join("");
@@ -368,7 +396,7 @@ function renderTray() {
     outList.innerHTML = clearAllHtml + selectedOutgoingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-outgoing-item" data-id="${id}">
-        <span>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</span>
+        <span>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</span>
         <span class="remove" data-remove="${id}">×</span>
       </div>`;
     }).join("");
@@ -485,10 +513,10 @@ function matchRowHtml(m) {
   const discClass = m.discrepancy === 0 ? "discrepancy-ok" : "discrepancy-bad";
   const discText = m.discrepancy === 0 ? "balanced" : `off by ${fmt(Math.abs(m.discrepancy))}`;
   const sideIn = incoming.length
-    ? incoming.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></div>`).join("")
+    ? incoming.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></div>`).join("")
     : `<span class="side-empty">No incoming</span>`;
   const sideOut = outgoing.length
-    ? outgoing.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</div>`).join("")
+    ? outgoing.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</div>`).join("")
     : `<span class="side-empty">No outgoing</span>`;
   return `<div class="match-row${m.conflict ? " match-row-conflict" : ""}">
     <div class="side-in">${sideIn}</div>
