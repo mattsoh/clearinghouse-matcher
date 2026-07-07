@@ -10,8 +10,8 @@
     <span class="value"><%= link_to "Change organization", organizations_path, class: "nav-link" %></span>
   </div>
   <div class="stat">
-    <span class="label">Zero balance on</span>
-    <span class="value" id="stat-zero-date">—</span>
+    <span class="label">Cutoff date</span>
+    <span class="value"><select class="cutoff-select" id="cutoff-select" aria-label="Choose cutoff period"></select></span>
   </div>
   <div class="stat">
     <span class="label">Final running balance (approx., this window)</span>
@@ -26,7 +26,7 @@
 <main id="ledger-main">
   <section class="panel" id="panel-ledger">
     <div class="panel-header">
-      <h2>All transactions, oldest → newest, with running balance</h2>
+      <h2>Transactions from cutoff, oldest → newest, with running balance</h2>
       <div class="search-group">
         <div class="search-wrap">
           <input type="text" class="search" id="search-ledger" placeholder="Search memo…">
@@ -91,6 +91,24 @@
       <button type="button" id="detail-modal-close" class="modal-close">×</button>
     </div>
     <div class="modal-body" id="detail-modal-body"></div>
+  </div>
+</div>
+
+<div id="cutoff-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>⚠ Matches span across cutoff</h3>
+      <button type="button" id="cutoff-modal-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <p>Moving the cutoff here would split <strong id="cutoff-modal-count">0</strong> confirmed match(es)
+       These matches will be undone.</p>
+      <div class="cutoff-conflict-list" id="cutoff-modal-list"></div>
+      <div class="tray-actions">
+        <button type="button" id="cutoff-modal-confirm" class="danger">Change cutoff &amp; remove matches</button>
+        <button type="button" id="cutoff-modal-cancel" class="secondary">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 

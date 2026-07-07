@@ -5,6 +5,11 @@ let provisional = [];
 let matchedIds = new Set();
 let discrepancyIds = new Set();
 
+let zeroBalanceOptions = [];
+let zeroBalanceSelectedId = null;
+let pendingCutoffId = null;
+let cutoffBusy = false;
+
 const fmt = (n) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(2);
 
 function amountMatches(amount, query) {
@@ -79,9 +84,12 @@ async function load() {
   const kept = zeroIdx >= 0 ? data.ledger.slice(zeroIdx) : data.ledger;
   ledger = [...kept].reverse();
 
-  document.getElementById("stat-zero-date").textContent = data.zero_balance_date || "n/a";
   document.getElementById("stat-final-balance").textContent = fmt(data.final_balance);
   document.getElementById("stat-count").textContent = ledger.length;
+
+  zeroBalanceOptions = data.zero_balance_options || [];
+  zeroBalanceSelectedId = data.zero_balance_selected_id || null;
+  renderCutoffSelect();
 
   render();
 }
@@ -160,5 +168,96 @@ document.getElementById("search-ledger-before").addEventListener("input", render
 document.getElementById("filter-matched").addEventListener("change", render);
 document.getElementById("filter-discrepancy").addEventListener("change", render);
 document.getElementById("filter-unmatched").addEventListener("change", render);
+
+function cutoffOptionLabel(o) {
+  return o.beginning ? "Beginning of history (show everything)" : o.date;
+}
+
+function renderCutoffSelect() {
+  const select = document.getElementById("cutoff-select");
+  select.innerHTML = zeroBalanceOptions
+    .map((o) => `<option value="${o.transaction_id}"${o.transaction_id === zeroBalanceSelectedId ? " selected" : ""}>${escapeHtml(cutoffOptionLabel(o))}</option>`)
+    .join("");
+}
+
+function cutoffConflictItemHtml(m) {
+  const sideIn = m.incoming.length
+    ? m.incoming.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)} — <strong>${fmt(t.amount)}</strong></div>`).join("")
+    : `<span class="side-empty">No incoming</span>`;
+  const sideOut = m.outgoing.length
+    ? m.outgoing.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)} — ${fmt(t.amount)}</div>`).join("")
+    : `<span class="side-empty">No outgoing</span>`;
+  return `<div class="cutoff-conflict-item">
+    <div class="side-in">${sideIn}</div>
+    <div class="side-out">${sideOut}</div>
+  </div>`;
+}
+
+function showCutoffConflictModal(transactionId, conflicts) {
+  pendingCutoffId = transactionId;
+  document.getElementById("cutoff-modal-count").textContent = conflicts.length;
+  document.getElementById("cutoff-modal-list").innerHTML = conflicts.map(cutoffConflictItemHtml).join("");
+  document.getElementById("cutoff-modal-overlay").classList.remove("hidden");
+}
+
+// Held for the whole operation, including the post-success reload -- not
+// just the PATCH -- so a second change can't race the first, and so Cancel
+// can't wave through a request that's already been sent to the server.
+function setCutoffBusy(busy) {
+  cutoffBusy = busy;
+  document.getElementById("cutoff-select").disabled = busy;
+  document.getElementById("cutoff-modal-confirm").disabled = busy;
+  document.getElementById("cutoff-modal-cancel").disabled = busy;
+  document.getElementById("cutoff-modal-close").disabled = busy;
+}
+
+function hideCutoffModal() {
+  if (cutoffBusy) return;
+  pendingCutoffId = null;
+  document.getElementById("cutoff-modal-overlay").classList.add("hidden");
+  renderCutoffSelect();
+}
+
+async function changeCutoff(transactionId, confirmRemoval) {
+  if (cutoffBusy) return;
+  setCutoffBusy(true);
+  try {
+    const res = await fetch(`${API_BASE}/api/cutoff`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transaction_id: transactionId, confirm: confirmRemoval }),
+    });
+
+    if (res.ok) {
+      document.getElementById("cutoff-modal-overlay").classList.add("hidden");
+      pendingCutoffId = null;
+      await load();
+      return;
+    }
+
+    const err = await res.json();
+    if (res.status === 409 && Array.isArray(err.conflicts)) {
+      showCutoffConflictModal(transactionId, err.conflicts);
+      return;
+    }
+
+    alert("Could not change cutoff: " + (err.error || "unknown error"));
+    renderCutoffSelect();
+  } finally {
+    setCutoffBusy(false);
+  }
+}
+
+document.getElementById("cutoff-select").addEventListener("change", (e) => {
+  changeCutoff(e.target.value, false);
+});
+document.getElementById("cutoff-modal-confirm").addEventListener("click", () => {
+  if (pendingCutoffId) changeCutoff(pendingCutoffId, true);
+});
+document.getElementById("cutoff-modal-cancel").addEventListener("click", hideCutoffModal);
+document.getElementById("cutoff-modal-close").addEventListener("click", hideCutoffModal);
+document.getElementById("cutoff-modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "cutoff-modal-overlay") hideCutoffModal();
+});
 
 load();
