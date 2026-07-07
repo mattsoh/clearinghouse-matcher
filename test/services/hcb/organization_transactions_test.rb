@@ -123,6 +123,64 @@ class Hcb::OrganizationTransactionsTest < ActiveSupport::TestCase
     end
   end
 
+  test "refresh! incrementally redrains: only walks recent activity plus the safety overlap, not full history" do
+    old_transactions = (1..500).map { |n| { "id" => "txn_old_#{n}", "date" => "2026-01-01", "amount_cents" => n } }.reverse
+    client = FakeHcbClient.new(transactions: old_transactions)
+    service = Hcb::OrganizationTransactions.new(client, "org_1")
+
+    baseline = service.all
+    assert_equal 500, baseline.size
+    full_drain_calls = client.transactions_calls
+
+    new_transactions = (1..50).map { |n| { "id" => "txn_new_#{n}", "date" => "2026-02-01", "amount_cents" => n } }.reverse
+    client.add_transactions(new_transactions)
+
+    calls_before_refresh = client.transactions_calls
+    result = service.refresh!
+    calls_during_refresh = client.transactions_calls - calls_before_refresh
+
+    assert_equal 550, result.size
+    assert_equal new_transactions.map { |t| t["id"] } + old_transactions.map { |t| t["id"] }, result.map { |t| t["id"] }
+
+    # A full drain of 550 transactions at PAGE_SIZE 100 takes 6 requests; the
+    # incremental redrain should need far fewer since it only walks the new
+    # 50 plus the SAFETY_OVERLAP (300) before splicing onto the baseline.
+    assert_operator calls_during_refresh, :<, full_drain_calls + 1
+    assert_equal 3, calls_during_refresh
+  end
+
+  test "all reuses the long-lived baseline for an incremental redrain once the primary cache has expired" do
+    old_transactions = (1..500).map { |n| { "id" => "txn_old_#{n}", "date" => "2026-01-01", "amount_cents" => n } }.reverse
+    client = FakeHcbClient.new(transactions: old_transactions)
+    service = Hcb::OrganizationTransactions.new(client, "org_1")
+
+    service.all
+
+    new_transactions = [ { "id" => "txn_new_1", "date" => "2026-02-01", "amount_cents" => 1 } ]
+    client.add_transactions(new_transactions)
+
+    travel(Hcb::OrganizationTransactions::TTL + 1.second) do
+      calls_before = client.transactions_calls
+      result = service.all
+      calls_during = client.transactions_calls - calls_before
+
+      assert_equal 501, result.size
+      assert_equal "txn_new_1", result.first["id"]
+      assert_operator calls_during, :<, 6 # a full 501-item drain would take 6 requests
+    end
+  end
+
+  test "incremental redrain falls back to a full drain when there is no baseline" do
+    transactions = (1..250).map { |n| { "id" => "txn_#{n}", "date" => "2026-01-01", "amount_cents" => n } }.reverse
+    client = FakeHcbClient.new(transactions: transactions)
+    service = Hcb::OrganizationTransactions.new(client, "org_1")
+
+    result = service.refresh!
+
+    assert_equal transactions.map { |t| t["id"] }, result.map { |t| t["id"] }
+    assert_equal 3, client.transactions_calls # ceil(250 / 100)
+  end
+
   test "fetch_page buffers concurrent drains separately by stream_id" do
     client = FakeHcbClient.new(
       transactions: [

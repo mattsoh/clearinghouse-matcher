@@ -4,10 +4,15 @@ module Hcb
   # expects doesn't mean hitting HCB on every request. The org-shared HCB
   # rate limit (1000 req / 5 min / IP) is the reason this exists at all.
   #
-  # Drains the FULL history: the zero-balance cutoff and the ledger's running
-  # balance are only correct when computed from the account's first
-  # transaction, so a rolling window isn't an option here. Worst case for a
-  # busy org is a few dozen requests per cache fill, well within budget.
+  # Callers need the FULL history: the zero-balance cutoff and the ledger's
+  # running balance are only correct when computed from the account's first
+  # transaction, so a rolling window isn't an option for the *result*. But a
+  # full re-walk of that history isn't needed on every redrain -- see
+  # #incremental_drain, which pages forward from the newest transaction only
+  # until it rejoins a previously-drained baseline, and splices the untouched
+  # remainder back on. Cost then scales with recent activity, not with total
+  # org history. Only a truly first-ever drain (or one where the baseline has
+  # aged out after BASELINE_TTL of inactivity) pays the full-history cost.
   class OrganizationTransactions
     TTL = ENV.fetch("HCB_TRANSACTION_CACHE_TTL", 600).to_i.seconds
     PAGE_SIZE = 100
@@ -17,6 +22,21 @@ module Hcb
     # it lapse -- so the next viewer's request is served from a warm cache
     # rather than blocking on a full multi-page HCB drain.
     REFRESH_AHEAD_WINDOW = 120.seconds
+
+    # How many of the most-recently-seen transactions every redrain
+    # unconditionally re-fetches from HCB, instead of trusting the previous
+    # drain's copy. A transaction can still change after it's first seen
+    # (declined, amount corrected) for some time, so anything older than this
+    # window is treated as settled and safe to reuse as-is. This is a
+    # generous safety margin, not a precise cutoff.
+    SAFETY_OVERLAP = 300
+
+    # How long a drain result is kept as the incremental-drain baseline, well
+    # past TTL -- so a redrain triggered after an org has been quiet for a
+    # while (primary cache already expired) still only walks recent activity
+    # instead of the full history. Only an org that's never been drained
+    # before (no baseline at all) pays the full-history cost.
+    BASELINE_TTL = 7.days
 
     def initialize(client, organization_id, filters: {})
       @client = client
@@ -31,10 +51,7 @@ module Hcb
     def all(bypass_cache: false)
       return drain if bypass_cache
 
-      result = Rails.cache.fetch(cache_key, expires_in: TTL, race_condition_ttl: 10.seconds) do
-        Rails.cache.write(fetched_at_key, Time.now, expires_in: TTL)
-        drain
-      end
+      result = Rails.cache.fetch(cache_key, expires_in: TTL, race_condition_ttl: 10.seconds) { redrain }
 
       maybe_refresh_ahead
       result
@@ -46,9 +63,8 @@ module Hcb
     # read and never touch the cache, e.g. the legacy importer) this is the
     # write side of cache warming.
     def refresh!
-      result = drain
+      result = redrain
       Rails.cache.write(cache_key, result, expires_in: TTL)
-      Rails.cache.write(fetched_at_key, Time.now, expires_in: TTL)
       result
     end
 
@@ -78,6 +94,7 @@ module Hcb
         Rails.cache.write(buffer_key(stream_id), buffered, expires_in: 2.minutes)
       else
         Rails.cache.write(cache_key, buffered, expires_in: TTL)
+        Rails.cache.write(baseline_key, buffered, expires_in: BASELINE_TTL)
         Rails.cache.write(fetched_at_key, Time.now, expires_in: TTL)
         Rails.cache.delete(buffer_key(stream_id))
       end
@@ -90,6 +107,8 @@ module Hcb
     def buffer_key(stream_id) = "#{cache_key}:buffer:#{stream_id}"
 
     def cache_key = "hcb:org:#{@organization_id}:transactions:v2:#{filters_cache_key}"
+
+    def baseline_key = "#{cache_key}:baseline"
 
     def fetched_at_key = "#{cache_key}:fetched_at"
 
@@ -115,6 +134,16 @@ module Hcb
       WarmOrganizationTransactionsJob.perform_later(@client.user_id, @organization_id, filters: @filters)
     end
 
+    # Shared by #all's cache-miss path and #refresh!: incrementally redrains
+    # against whatever baseline we have (falling back to a full #drain when
+    # there isn't one), then re-saves the result as the new baseline.
+    def redrain
+      result = incremental_drain(Rails.cache.read(baseline_key))
+      Rails.cache.write(baseline_key, result, expires_in: BASELINE_TTL)
+      Rails.cache.write(fetched_at_key, Time.now, expires_in: TTL)
+      result
+    end
+
     def drain
       results = []
       after = nil
@@ -130,6 +159,41 @@ module Hcb
       end
 
       results
+    end
+
+    # Pages forward from the newest transaction only until we've re-fetched
+    # at least SAFETY_OVERLAP transactions *and* landed back on a transaction
+    # id already present in `previous` -- everything `previous` has beyond
+    # that point is old enough to trust unchanged, so it's reused rather than
+    # re-walked. Falls back to a full #drain when there's no baseline to
+    # splice onto, or naturally degrades to one (via the has_more/empty-page
+    # break) if the org's entire history is smaller than SAFETY_OVERLAP or
+    # `previous` doesn't overlap with what HCB returns now at all.
+    def incremental_drain(previous)
+      return drain if previous.blank?
+
+      previous_index = previous.each_with_index.to_h { |t, i| [ t["id"], i ] }
+      fresh = []
+      after = nil
+
+      loop do
+        page = self.page(after: after, limit: PAGE_SIZE)
+        data = page["data"] || []
+        break if data.empty?
+
+        fresh.concat(data)
+
+        if fresh.size >= SAFETY_OVERLAP
+          rejoin_at = previous_index[fresh.last["id"]]
+          return fresh + previous[(rejoin_at + 1)..] if rejoin_at
+        end
+
+        break unless page["has_more"]
+
+        after = data.last["id"]
+      end
+
+      fresh
     end
   end
 end

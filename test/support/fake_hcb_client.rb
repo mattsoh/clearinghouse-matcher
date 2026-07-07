@@ -15,6 +15,12 @@ class FakeHcbClient
   def user = @user
   def organizations = { "data" => @organizations }
 
+  # Prepends newly-"arrived" transactions (newest-first, matching HCB's own
+  # ordering) so tests can simulate activity happening between two drains.
+  def add_transactions(new_transactions)
+    @transactions = new_transactions + @transactions
+  end
+
   def organization(_id, expand: [])
     { "id" => "org_1", "name" => "Test Org", "users" => @members }
   end
