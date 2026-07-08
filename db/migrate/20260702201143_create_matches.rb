@@ -12,7 +12,7 @@ class CreateMatches < ActiveRecord::Migration[8.0]
       t.timestamps
     end
     add_index :matches, :hcb_organization_id
-    add_index :matches, [:hcb_organization_id, :undone_at]
+    add_index :matches, [ :hcb_organization_id, :undone_at ]
     add_index :matches, :legacy_id, unique: true
     add_foreign_key :matches, :users, column: :created_by_user_id
     add_foreign_key :matches, :users, column: :undone_by_user_id

@@ -11,7 +11,7 @@ class CreateMatchTransactions < ActiveRecord::Migration[8.0]
     end
     add_foreign_key :match_transactions, :matches
     add_index :match_transactions, :match_id
-    add_index :match_transactions, [:hcb_organization_id, :hcb_transaction_id],
+    add_index :match_transactions, [ :hcb_organization_id, :hcb_transaction_id ],
       unique: true, where: "undone_at IS NULL",
       name: "index_match_transactions_on_active_txn_per_org"
   end

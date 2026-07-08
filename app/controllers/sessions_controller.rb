@@ -2,7 +2,7 @@ class SessionsController < ApplicationController
   skip_before_action :require_login!, only: [ :new, :callback, :destroy ]
 
 
-  def new 
+  def new
     state = SecureRandom.hex(16)
     session[:oauth_state] = state
     redirect_to Hcb.oauth_client.auth_code.authorize_url(
@@ -27,7 +27,7 @@ class SessionsController < ApplicationController
       params[:code], redirect_uri: ENV.fetch("HCB_OAUTH_REDIRECT_URI")
     )
 
-  
+
     identity = JSON.parse(token.get("/api/v4/user").body)
 
     user = User.find_or_initialize_by(hcb_user_id: identity["id"])
