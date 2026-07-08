@@ -532,7 +532,7 @@ function matchRowHtml(m) {
   const incoming = m.incoming_ids.map((id) => byId.get(id)).filter(Boolean);
   const outgoing = m.outgoing_ids.map((id) => byId.get(id)).filter(Boolean);
   const discClass = m.discrepancy === 0 ? "discrepancy-ok" : "discrepancy-bad";
-  const discText = m.discrepancy === 0 ? "balanced" : `off by ${fmt(Math.abs(m.discrepancy))}`;
+  const discText = m.discrepancy === 0 ? "balanced" : `off by ${fmt(m.discrepancy)}`;
   const sideIn = incoming.length
     ? incoming.map((t) => `<div>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></div>`).join("")
     : `<span class="side-empty">No incoming</span>`;
