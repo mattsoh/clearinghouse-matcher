@@ -26,10 +26,17 @@ module Hcb
 
     private
 
+    # HCB answers a nonexistent org and one the token just isn't authorized
+    # for identically (403 not_authorized), matching the caller's own
+    # can't-distinguish-the-two stance (see OrganizationScoped#role_for) --
+    # so it's treated as "no such org" here rather than an unhandled error.
     def organization
       Rails.cache.fetch(cache_key, expires_in: TTL, race_condition_ttl: 5.seconds) do
         @client.organization(@organization_id, expand: [ "users" ])
       end
+    rescue OAuth2::Error => e
+      raise unless e.response.status.in?([ 403, 404 ])
+      {}
     end
 
     def cache_key = "hcb:org:#{@organization_id}:members:v1"
