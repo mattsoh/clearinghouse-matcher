@@ -181,6 +181,28 @@ class Hcb::OrganizationTransactionsTest < ActiveSupport::TestCase
     assert_equal 3, client.transactions_calls # ceil(250 / 100)
   end
 
+  test "fetch_page reuses the baseline for an incremental rejoin once the primary cache has expired" do
+    old_transactions = (1..500).map { |n| { "id" => "txn_old_#{n}", "date" => "2026-01-01", "amount_cents" => n } }.reverse
+    client = FakeHcbClient.new(transactions: old_transactions)
+    service = Hcb::OrganizationTransactions.new(client, "org_1")
+
+    service.all
+
+    new_transactions = [ { "id" => "txn_new_1", "date" => "2026-02-01", "amount_cents" => 1 } ]
+    client.add_transactions(new_transactions)
+
+    travel(Hcb::OrganizationTransactions::TTL + 1.second) do
+      calls_before = client.transactions_calls
+      result = service.fetch_page(stream_id: "s3")
+      calls_during = client.transactions_calls - calls_before
+
+      assert_equal 501, result[:data].size
+      assert_equal "txn_new_1", result[:data].first["id"]
+      assert_not result[:has_more]
+      assert_operator calls_during, :<, 6 # a full 501-item drain would take 6 requests
+    end
+  end
+
   test "fetch_page buffers concurrent drains separately by stream_id" do
     client = FakeHcbClient.new(
       transactions: [

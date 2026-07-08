@@ -104,6 +104,14 @@ module Hcb
     # soon as each page resolves instead of blocking on the full multi-page
     # drain. Short-circuits to the cached #all result when it's already warm.
     #
+    # When the primary cache has expired but a baseline is still around (see
+    # #incremental_drain), the first call of a stream does the same
+    # rejoin-with-baseline walk #redrain uses instead of raw-paging the
+    # caller all the way back through full org history -- a page refresh
+    # after the TTL lapses should only cost as much as recent activity, not
+    # a full re-walk. That full walk is reserved for a truly first-ever
+    # drain (no baseline at all).
+    #
     # Accumulates pages under a caller-supplied stream_id (rather than the
     # shared cache_key) so two concurrent drains -- two tabs, two users --
     # can't interleave and corrupt each other's buffer. Once the last page
@@ -114,6 +122,17 @@ module Hcb
       if after.blank?
         cached = Rails.cache.read(cache_key)
         return { data: cached, has_more: false, next_after: nil, total_count: cached.size } if cached
+
+        baseline = Rails.cache.read(baseline_key)
+        if baseline.present?
+          result = incremental_drain(baseline)
+          Rails.cache.write(cache_key, result, expires_in: TTL)
+          Rails.cache.write(baseline_key, result, expires_in: BASELINE_TTL)
+          Rails.cache.write(fetched_at_key, Time.now, expires_in: TTL)
+          Rails.cache.delete(buffer_key(stream_id))
+          write_side_caches(result)
+          return { data: result, has_more: false, next_after: nil, total_count: result.size }
+        end
       end
 
       raw = page(after: after, limit: limit)
