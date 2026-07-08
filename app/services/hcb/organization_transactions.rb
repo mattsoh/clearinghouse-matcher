@@ -51,10 +51,34 @@ module Hcb
     def all(bypass_cache: false)
       return drain if bypass_cache
 
-      result = Rails.cache.fetch(cache_key, expires_in: TTL, race_condition_ttl: 10.seconds) { redrain }
+      computed = false
+      result = Rails.cache.fetch(cache_key, expires_in: TTL, race_condition_ttl: 10.seconds) do
+        computed = true
+        redrain
+      end
+      write_side_caches(result) if computed
 
       maybe_refresh_ahead
       result
+    end
+
+    # O(1) raw-transaction lookup by id, backed by #write_side_caches -- for
+    # callers (OrganizationLedger#transaction_by_id) that only need one or two
+    # specific transactions and shouldn't have to pay for materializing the
+    # whole org history to get them. Returns nil on a cache miss (side caches
+    # not yet warm for this drain); callers fall back to the slower path.
+    def find(id)
+      Rails.cache.read(by_id_key)&.dig(id)
+    end
+
+    # Chronological (oldest-first, declined-excluded) position/balance data
+    # for the same drain result, keyed by #write_side_caches -- lets
+    # OrganizationLedger answer "where does this id sit relative to the
+    # cutoff" and "what are the zero-balance crossings" in O(1)/O(crossings)
+    # instead of re-walking full org history per request. Returns nil on a
+    # cache miss.
+    def derived
+      Rails.cache.read(derived_key)
     end
 
     # Drains fresh and unconditionally overwrites the cache, regardless of
@@ -65,6 +89,7 @@ module Hcb
     def refresh!
       result = redrain
       Rails.cache.write(cache_key, result, expires_in: TTL)
+      write_side_caches(result)
       result
     end
 
@@ -97,6 +122,7 @@ module Hcb
         Rails.cache.write(baseline_key, buffered, expires_in: BASELINE_TTL)
         Rails.cache.write(fetched_at_key, Time.now, expires_in: TTL)
         Rails.cache.delete(buffer_key(stream_id))
+        write_side_caches(buffered)
       end
 
       { data: data, has_more: has_more, next_after: has_more ? data.last["id"] : nil, total_count: raw["total_count"] }
@@ -108,6 +134,10 @@ module Hcb
 
     def cache_key = "hcb:org:#{@organization_id}:transactions:v2:#{filters_cache_key}"
 
+    def by_id_key = "#{cache_key}:by_id"
+
+    def derived_key = "#{cache_key}:derived"
+
     def baseline_key = "#{cache_key}:baseline"
 
     def fetched_at_key = "#{cache_key}:fetched_at"
@@ -116,6 +146,36 @@ module Hcb
 
     def filters_cache_key
       @filters.to_a.sort_by(&:first).to_h.to_json
+    end
+
+    # Computed once per drain (see the three write sites above), not per
+    # request -- this is the O(n) walk that used to happen fresh inside
+    # OrganizationLedger on every single request that needed a lookup or
+    # cutoff classification.
+    def write_side_caches(result)
+      Rails.cache.write(by_id_key, result.index_by { |t| t["id"] }, expires_in: TTL)
+
+      ordered = result.reject { |t| t["declined"] }.reverse
+      position_by_id = {}
+      ids = Array.new(ordered.size)
+      dates = Array.new(ordered.size)
+      balances_cents = Array.new(ordered.size)
+      running = 0
+
+      ordered.each_with_index do |t, i|
+        running += (t["amount_cents"] || 0)
+        position_by_id[t["id"]] = i
+        ids[i] = t["id"]
+        dates[i] = t["date"]
+        balances_cents[i] = running
+      end
+
+      Rails.cache.write(derived_key, {
+        position_by_id: position_by_id,
+        ids: ids,
+        dates: dates,
+        balances_cents: balances_cents
+      }, expires_in: TTL)
     end
 
     # No-ops unless @client can identify who's asking (a real, logged-in

@@ -19,12 +19,13 @@ class OrganizationLedger
   def initialize(client, organization_id)
     @client = client
     @organization_id = organization_id
+    @hcb_transactions = Hcb::OrganizationTransactions.new(client, organization_id)
   end
 
   # Oldest-first. Declined transactions are excluded entirely -- they never
   # moved money, so they'd corrupt the running balance and can't be matched.
   def transactions
-    @transactions ||= Hcb::OrganizationTransactions.new(@client, @organization_id).all
+    @transactions ||= @hcb_transactions.all
       .map { |t| Hcb::TransactionPresenter.new(t) }
       .reject(&:declined?)
       .reverse
@@ -32,7 +33,7 @@ class OrganizationLedger
 
   # Balance in cents after each transaction, aligned with #transactions.
   def running_balance_cents
-    @running_balance_cents ||= begin
+    @running_balance_cents ||= derived_order&.fetch(:balances_cents) || begin
       total = 0
       transactions.map { |t| total += t.amount_cents }
     end
@@ -42,16 +43,13 @@ class OrganizationLedger
   # day, only the last crossing that day is offered. The very start of the
   # transaction history -- before anything happened, balance necessarily zero
   # -- is always offered too, as the oldest (last) option.
+  #
+  # Sourced from the drain-time derived index when it's warm, so this doesn't
+  # have to Presenter-wrap and running-balance-walk the whole org history on
+  # every request that needs the cutoff (e.g. every match creation) -- only
+  # the first request after a (re)drain pays that cost.
   def zero_options
-    @zero_options ||= begin
-      by_date = {}
-      running_balance_cents.each_with_index do |balance, i|
-        by_date[transactions[i].date] = i if balance.zero?
-      end
-      crossings = by_date.map { |date, i| ZeroOption.new(date: date, transaction_id: transactions[i].id, index: i) }
-      beginning = ZeroOption.new(date: transactions.first&.date, transaction_id: BEGINNING_ID, index: -1)
-      (crossings + [ beginning ]).sort_by(&:index).reverse
-    end
+    @zero_options ||= (order = derived_order) ? zero_options_from(order) : zero_options_from_transactions
   end
 
   def effective_cutoff
@@ -73,6 +71,9 @@ class OrganizationLedger
   end
 
   def transaction_by_id(id)
+    raw = @hcb_transactions.find(id)
+    return Hcb::TransactionPresenter.new(raw) if raw
+
     index = index_of(id)
     return transactions[index] if index
 
@@ -107,7 +108,39 @@ class OrganizationLedger
   private
 
   def index_of(id)
+    fast = derived_order&.dig(:position_by_id, id)
+    return fast if fast
+
     @index_by_id ||= transactions.each_with_index.to_h { |t, i| [ t.id, i ] }
     @index_by_id[id]
+  end
+
+  # Memoized nil-or-hash: the derived index Hcb::OrganizationTransactions
+  # computes once per drain (see #write_side_caches there). nil means it
+  # hasn't been computed yet for the current drain (e.g. first-ever request
+  # for this org) -- callers fall back to walking #transactions themselves.
+  def derived_order
+    return @derived_order if defined?(@derived_order)
+    @derived_order = @hcb_transactions.derived
+  end
+
+  def zero_options_from(order)
+    by_date = {}
+    order[:balances_cents].each_with_index do |balance, i|
+      by_date[order[:dates][i]] = i if balance.zero?
+    end
+    crossings = by_date.map { |date, i| ZeroOption.new(date: date, transaction_id: order[:ids][i], index: i) }
+    beginning = ZeroOption.new(date: order[:dates].first, transaction_id: BEGINNING_ID, index: -1)
+    (crossings + [ beginning ]).sort_by(&:index).reverse
+  end
+
+  def zero_options_from_transactions
+    by_date = {}
+    running_balance_cents.each_with_index do |balance, i|
+      by_date[transactions[i].date] = i if balance.zero?
+    end
+    crossings = by_date.map { |date, i| ZeroOption.new(date: date, transaction_id: transactions[i].id, index: i) }
+    beginning = ZeroOption.new(date: transactions.first&.date, transaction_id: BEGINNING_ID, index: -1)
+    (crossings + [ beginning ]).sort_by(&:index).reverse
   end
 end
