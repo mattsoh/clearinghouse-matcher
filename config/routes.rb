@@ -18,6 +18,7 @@ Rails.application.routes.draw do
     namespace :api do
       get    "transactions",      to: "transactions#index"
       get    "transactions/page", to: "transactions#page"
+      get    "transactions/:id/comments", to: "comments#index"
       get    "matches",           to: "matches#index"
       post   "matches",           to: "matches#create"
       patch  "matches/:id",       to: "matches#update"

@@ -6,6 +6,21 @@ function escapeHtml(s) {
 
 const fmtDetail = (n) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(2);
 
+function commentsFieldHtml(html) {
+  return `
+    <div class="modal-field" id="detail-comments-field">
+      <div class="field-label">Comments</div>
+      <div class="field-value" id="detail-comments-value">${html}</div>
+    </div>
+  `;
+}
+
+function commentHtml(c) {
+  const author = escapeHtml(c.user_name) || "Someone";
+  const fileHtml = c.file_url ? ` <a href="${escapeHtml(c.file_url)}" target="_blank" rel="noopener">attachment</a>` : "";
+  return `<div class="detail-comment"><strong>${author}:</strong> ${escapeHtml(c.content)}${fileHtml}</div>`;
+}
+
 function showDetailsModal(t) {
   const overlay = document.getElementById("detail-modal-overlay");
   const title = document.getElementById("detail-modal-title");
@@ -15,7 +30,6 @@ function showDetailsModal(t) {
 
   const fields = [
     ["Memo", t.memo],
-    ["Comments", t.comments],
     ["Tags", t.tags],
     ["User", t.user_name],
     ["Category", t.category_label],
@@ -31,12 +45,28 @@ function showDetailsModal(t) {
       <div class="field-label">${label}</div>
       <div class="field-value">${escapeHtml(value) || "—"}</div>
     </div>
-  `).join("") + deleteHtml;
+  `).join("") + (isManual ? "" : commentsFieldHtml("Loading…")) + deleteHtml;
 
   overlay.classList.remove("hidden");
 
   if (isManual) {
     document.getElementById("detail-delete-tx").addEventListener("click", () => deleteManualTransaction(t.id));
+  } else {
+    loadComments(t.id);
+  }
+}
+
+async function loadComments(transactionId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/transactions/${transactionId}/comments`);
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    const valueEl = document.getElementById("detail-comments-value");
+    if (!valueEl) return; // modal was closed/reopened for another transaction before this resolved
+    valueEl.innerHTML = data.comments.length ? data.comments.map(commentHtml).join("") : "—";
+  } catch (e) {
+    const valueEl = document.getElementById("detail-comments-value");
+    if (valueEl) valueEl.textContent = "Could not load comments.";
   }
 }
 

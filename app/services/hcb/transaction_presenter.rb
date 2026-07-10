@@ -1,9 +1,11 @@
 module Hcb
   # Normalizes a raw HCB v4 transaction JSON hash into the field shape the
   # legacy frontend (app.js/ledger.js/details.js) already knows how to render.
-  # `comments` has no confirmed HCB equivalent under the organizations:read/
-  # ledgers:read scopes this app is limited to, so it's left blank rather
-  # than guessed. `user_name` is only populated for transaction types that
+  # Comments aren't included here -- HCB's comments endpoint is per-transaction,
+  # so details.js fetches them on demand (via Api::CommentsController) only
+  # when the detail modal for a transaction is opened, rather than paying for
+  # one extra API call per row up front. `user_name` is only populated for
+  # transaction types that
   # carry an internal HCB "sender"/"submitter" (ACH transfers, checks,
   # disbursements, Wise transfers, card charges, check deposits) -- see
   # app/views/api/v4/transactions/*.json.jbuilder in hackclub/hcb. Donations
@@ -50,7 +52,6 @@ module Hcb
     def direction = amount.negative? ? "out" : "in"
     def declined? = !!@raw["declined"]
     def tags = Array(@raw["tags"]).join(", ")
-    def comments = ""
     def user_name
       @raw.dig("ach_transfer", "sender", "name") ||
         @raw.dig("check", "sender", "name") ||
@@ -71,7 +72,7 @@ module Hcb
     def as_json(*)
       {
         id: id, date: date, memo: memo, amount: amount, direction: direction,
-        tags: tags, comments: comments, user_name: user_name, category_label: category_label
+        tags: tags, user_name: user_name, category_label: category_label
       }
     end
   end

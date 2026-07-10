@@ -29,6 +29,7 @@ module Hcb
     end
 
     def transaction(id) = get("/api/v4/transactions/#{id}")
+    def comments(transaction_id) = get("/api/v4/comments", transaction_id: transaction_id)
 
     private
 

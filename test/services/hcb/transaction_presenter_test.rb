@@ -53,6 +53,6 @@ class Hcb::TransactionPresenterTest < ActiveSupport::TestCase
     presenter = Hcb::TransactionPresenter.new({ "id" => "txn_3", "date" => "2026-01-03", "memo" => "Fee", "amount_cents" => -100 })
     json = presenter.as_json
 
-    assert_equal %i[id date memo amount direction tags comments user_name category_label].sort, json.keys.sort
+    assert_equal %i[id date memo amount direction tags user_name category_label].sort, json.keys.sort
   end
 end
