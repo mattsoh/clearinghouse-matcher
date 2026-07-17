@@ -198,7 +198,7 @@ main {
   user-select: none;
 }
 
-.row .row-info { display: flex; align-items: center; justify-content: center; gap: 0; }
+.row .row-info { display: flex; align-items: center; justify-content: center; gap: 6px; }
 
 .row:hover { background: #f0f6ff; }
 
@@ -417,7 +417,7 @@ button.danger {
   border: none;
   color: #656d76;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 16px;
   padding: 0 1px;
   margin-left: 0;
   vertical-align: middle;
@@ -428,7 +428,7 @@ button.danger {
 .hcb-link {
   color: #656d76;
   text-decoration: none;
-  font-size: 12px;
+  font-size: 16px;
   padding: 0 1px;
   margin-left: 0;
   vertical-align: middle;
@@ -805,8 +805,8 @@ tr.zero-point { background: #fff8c5; }
   .info-icon,
   .hcb-link,
   .modal-close {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 25px;
+    min-width: 25px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
