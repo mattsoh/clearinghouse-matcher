@@ -454,7 +454,7 @@ function renderTray() {
     inList.innerHTML = clearAllHtml + selectedIncomingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-incoming-item" data-id="${id}">
-        <span class="tray-chip-memo">${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}</span>
+        <span class="tray-chip-memo"><span class="tray-chip-date">${t.date}</span> ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}</span>
         <span class="tray-chip-icons">${infoIconHtml(t)}${HCBLinkHtml(t)}</span>
         <strong class="tray-chip-amount">${fmt(t.amount)}</strong>
         <span class="remove" data-remove-in="${id}">×</span>
@@ -479,7 +479,7 @@ function renderTray() {
     outList.innerHTML = clearAllHtml + selectedOutgoingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-outgoing-item" data-id="${id}">
-        <span class="tray-chip-memo">${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}</span>
+        <span class="tray-chip-memo"><span class="tray-chip-date">${t.date}</span> ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}</span>
         <span class="tray-chip-icons">${infoIconHtml(t)}${HCBLinkHtml(t)}</span>
         <span class="tray-chip-amount">${fmt(t.amount)}</span>
         <span class="remove" data-remove="${id}">×</span>

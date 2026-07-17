@@ -51,7 +51,7 @@ header#stats {
 
 main {
   display: grid;
-  grid-template-columns: 1fr 300px 1fr;
+  grid-template-columns: 1fr 380px 1fr;
   gap: 12px;
   padding: 16px 20px;
   align-items: start;
@@ -284,6 +284,8 @@ main {
      screens but full transaction detail wherever there's room for it. */
   display: none;
 }
+
+.tray-chip-date { font-size: 11px; color: #656d76; }
 
 .tray-chip-icons { flex-shrink: 0; white-space: nowrap; }
 .tray-chip-amount { flex-shrink: 0; font-variant-numeric: tabular-nums; }
