@@ -23,10 +23,10 @@
   </head>
 
   <body>
-    <%= link_to root_path, class: "fixed top-4 left-4 z-50" do %>
+    <%= link_to root_path, id: "site-logo-link" do %>
       <picture>
         <source srcset="<%= asset_path('favicon-dark.svg') %>" media="(prefers-color-scheme: dark)">
-        <img src="<%= asset_path('favicon-light.svg') %>" alt="Steelyard" class="h-8 w-8">
+        <img src="<%= asset_path('favicon-light.svg') %>" alt="Steelyard" id="site-logo">
       </picture>
     <% end %>
 

@@ -243,6 +243,10 @@ function renderStats() {
   document.getElementById("stat-net").textContent = fmt(inSum + outSum);
 }
 
+// A plain monochrome outline (not an emoji) so "clear all" renders as a
+// small crisp glyph on every platform instead of a colorful system emoji.
+const trashIconSvg = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M4 4l.6 9a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4"/></svg>`;
+
 function infoIconHtml(t) {
   return `<button type="button" class="info-icon" data-detail="${escapeHtml(JSON.stringify(t))}" title="View full details">ⓘ</button>`;
 }
@@ -446,11 +450,13 @@ function renderTray() {
   if (selectedIncomingIds.length === 0) {
     inList.innerHTML = `<div class="empty-msg">Click incoming transactions on the left to add them here.</div>`;
   } else {
-    const clearAllHtml = `<div class="tray-list-header"><button type="button" class="tray-clear-all" id="clear-incoming-all">Clear all</button></div>`;
+    const clearAllHtml = `<button type="button" class="tray-clear-all" id="clear-incoming-all" title="Clear all incoming" aria-label="Clear all incoming">${trashIconSvg}</button>`;
     inList.innerHTML = clearAllHtml + selectedIncomingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-incoming-item" data-id="${id}">
-        <span>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — <strong>${fmt(t.amount)}</strong></span>
+        <span class="tray-chip-memo">${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}</span>
+        <span class="tray-chip-icons">${infoIconHtml(t)}${HCBLinkHtml(t)}</span>
+        <strong class="tray-chip-amount">${fmt(t.amount)}</strong>
         <span class="remove" data-remove-in="${id}">×</span>
       </div>`;
     }).join("");
@@ -469,11 +475,13 @@ function renderTray() {
   if (selectedOutgoingIds.length === 0) {
     outList.innerHTML = `<div class="empty-msg">Click outgoing transactions on the right to add them here.</div>`;
   } else {
-    const clearAllHtml = `<div class="tray-list-header"><button type="button" class="tray-clear-all" id="clear-outgoing-all">Clear all</button></div>`;
+    const clearAllHtml = `<button type="button" class="tray-clear-all" id="clear-outgoing-all" title="Clear all outgoing" aria-label="Clear all outgoing">${trashIconSvg}</button>`;
     outList.innerHTML = clearAllHtml + selectedOutgoingIds.map((id) => {
       const t = byId.get(id);
       return `<div class="tray-outgoing-item" data-id="${id}">
-        <span>${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}${infoIconHtml(t)}${HCBLinkHtml(t)} — ${fmt(t.amount)}</span>
+        <span class="tray-chip-memo">${t.date} — ${escapeHtml(t.memo)}${hcbCodeInlineHtml(t)}</span>
+        <span class="tray-chip-icons">${infoIconHtml(t)}${HCBLinkHtml(t)}</span>
+        <span class="tray-chip-amount">${fmt(t.amount)}</span>
         <span class="remove" data-remove="${id}">×</span>
       </div>`;
     }).join("");

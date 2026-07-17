@@ -10,6 +10,21 @@
 
 * { box-sizing: border-box; }
 
+#site-logo-link {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 50;
+  display: block;
+  line-height: 0;
+}
+
+#site-logo {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -194,6 +209,11 @@ main {
 .tray {
   position: sticky;
   top: 62px;
+  /* .panel already caps height at 70vh, but without its own scroll a tray
+     full of selected transactions just overflows past the box border —
+     confirm/cancel end up rendered outside it instead of staying part of
+     the panel. Scrolling within the box keeps everything contained. */
+  overflow-y: auto;
 }
 
 .tray-empty {
@@ -223,6 +243,7 @@ main {
   gap: 6px;
   max-height: 220px;
   overflow-y: auto;
+  container-type: inline-size;
 }
 
 .tray-incoming-item, .tray-outgoing-item {
@@ -230,29 +251,48 @@ main {
   border-radius: 6px;
   font-size: 13px;
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
 }
 
 .tray-incoming-item { background: #ddf4ff; }
 .tray-outgoing-item { background: #fce9f5; }
 
-.tray-list-header {
-  display: flex;
-  justify-content: flex-end;
+.tray-chip-memo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Hidden by default; shown once the list has enough width to fit it
+     without crushing the amount — see the @container rule below. This is
+     what lets the mobile tray show icon+amount-only chips on narrow
+     screens but full transaction detail wherever there's room for it. */
+  display: none;
+}
+
+.tray-chip-icons { flex-shrink: 0; white-space: nowrap; }
+.tray-chip-amount { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+@container (min-width: 220px) {
+  .tray-chip-memo { display: inline; }
 }
 
 .tray-clear-all {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  color: var(--red);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 0 0 2px;
+  color: #656d76;
+  padding: 5px;
+  border-radius: 4px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.tray-clear-all:hover { text-decoration: underline; }
+.tray-clear-all:hover { background: rgba(207, 34, 46, 0.1); color: var(--red); }
 
 .tray-incoming-item .remove, .tray-outgoing-item .remove {
   cursor: pointer;
@@ -572,4 +612,218 @@ tr.zero-point { background: #fff8c5; }
 .cutoff-conflict-item:last-child { border-bottom: none; }
 .cutoff-conflict-item .side-in { color: var(--in-color); }
 .cutoff-conflict-item .side-out { color: var(--out-color); }
+
+/* ---- Responsive / touch (tablet & phone) ---- */
+
+@media (max-width: 1100px) {
+  main {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 16px;
+  }
+
+  .panel {
+    max-height: none;
+  }
+
+  .list {
+    max-height: 50vh;
+  }
+
+  .panel.tray {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    order: -1;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  .tray-body {
+    display: grid;
+    grid-template-columns: 1fr 16px 1fr;
+    align-items: start;
+    gap: 4px 6px;
+    padding: 8px 10px;
+  }
+
+  .tray-editing-banner,
+  .tray-totals,
+  .tray-actions {
+    grid-column: 1 / -1;
+  }
+
+  .tray-incoming-list, .tray-outgoing-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    max-height: none;
+    overflow-y: visible;
+    gap: 4px;
+  }
+
+  .tray-outgoing-list { justify-content: flex-end; }
+
+  .tray-clear-all { order: 1; align-self: center; }
+
+  .tray-incoming-item, .tray-outgoing-item {
+    padding: 4px 6px;
+    font-size: 12px;
+    gap: 4px;
+    flex: 0 1 auto;
+    max-width: 100%;
+  }
+
+  /* Icons and the HCB deep-link both stay full-size and are redundant with
+     the info icon's own detail popup at this width, so drop the link and
+     shrink the info icon — otherwise two 44px touch targets bloat a chip
+     that's only meant to show an amount. */
+  .tray-chip-icons .hcb-link { display: none; }
+
+  .tray-arrow {
+    font-size: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--border);
+    border-left: 1px dashed var(--border);
+    border-right: 1px dashed var(--border);
+  }
+
+  .tray-arrow::before {
+    content: "⇄";
+    font-size: 12px;
+    color: #656d76;
+  }
+
+  header#stats {
+    position: static;
+    gap: 12px 20px;
+    padding: 10px 12px;
+  }
+
+  .match-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .match-row-actions {
+    margin-top: 6px;
+  }
+
+  .cutoff-conflict-item {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-table-wrap {
+    overflow-x: auto;
+  }
+
+  .ledger-table td.memo-cell {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+
+  header#stats {
+    position: static;
+    gap: 10px 16px;
+  }
+
+  .panel.tray {
+    max-height: 45vh;
+  }
+
+  .stat .value { font-size: 15px; }
+
+  .search-group {
+    flex-wrap: wrap;
+  }
+
+  .search-wrap-amount {
+    flex: 1 1 100%;
+  }
+
+  .date-filter-group {
+    flex-wrap: wrap;
+  }
+
+  .row {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "date memo memo"
+      ".    amt  info";
+    row-gap: 4px;
+    column-gap: 8px;
+    padding: 10px 12px;
+    align-items: center;
+  }
+
+  .row .date { grid-area: date; }
+  .row .memo { grid-area: memo; }
+  .row .amount { grid-area: amt; justify-self: start; }
+  .row .row-info { grid-area: info; justify-self: end; }
+
+  .row .hcb-code { display: none; }
+
+  .modal-box {
+    width: 94%;
+    max-height: 90vh;
+  }
+}
+
+/* Touch targets: comfortable tap areas regardless of pointer-precision heuristics */
+@media (pointer: coarse) {
+  button,
+  .info-icon,
+  .hcb-link,
+  .modal-close {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .search-clear {
+    padding: 10px 12px;
+  }
+
+  .tray-clear-all {
+    min-height: 32px;
+    min-width: 32px;
+  }
+
+  .tray-chip-icons .info-icon,
+  .tray-incoming-item .remove,
+  .tray-outgoing-item .remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    min-width: 28px;
+  }
+
+  .tray-incoming-item .remove, .tray-outgoing-item .remove {
+    padding: 6px;
+  }
+
+  .row {
+    min-height: 44px;
+  }
+
+  .status-toggle {
+    padding: 8px 12px;
+  }
+
+  .sort-select,
+  .cutoff-select,
+  .search {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
 
