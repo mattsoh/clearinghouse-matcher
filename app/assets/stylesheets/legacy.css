@@ -68,10 +68,11 @@ header#stats {
   align-self: stretch;
   cursor: col-resize;
   position: relative;
-  /* Desktop-only affordance: on touch there's no hover to reveal it and no
-     fine-pointer precision to drag a 6px handle, so it's just dead space
-     that gets in the way of tapping nearby content. */
   display: block;
+  /* Pointer Events (not mouse events) so the same drag handler in app.js
+     covers touch too; this stops the page from panning/scrolling once a
+     drag starts on a touch device. */
+  touch-action: none;
 }
 
 .col-resizer::after {
@@ -91,15 +92,22 @@ header#stats {
 }
 
 @media (pointer: coarse) {
-  .col-resizer { display: none; }
+  /* A 6px hit target is precise-pointer-only -- widen the actual touch
+     target with an invisible pseudo-element rather than growing the
+     visible 6px grid track itself (which would eat into panel width). */
+  .col-resizer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -9px;
+    right: -9px;
+  }
 }
 
-/* Explicit placement rather than relying on source-order auto-placement:
-   hiding .col-resizer on touch (above) removes it from the grid's item
-   list entirely, which would otherwise shift #panel-tray and
-   #panel-outgoing left to fill the gap -- collapsing the tray into the
-   6px resizer track (near-zero width) on iPad and other coarse-pointer
-   devices at desktop-sized viewports. */
+/* Explicit placement rather than relying on source-order auto-placement,
+   so #panel-tray and #panel-outgoing can't ever collapse into the 6px
+   resizer track if a resizer element goes missing/hidden for any reason. */
 #panel-incoming { grid-column: 1; }
 /* .panel.tray (not #panel-tray) so it stays equal-specificity with, and
    gets properly overridden by, the .panel.tray { grid-column: 1 / -1 }
@@ -250,7 +258,7 @@ header#stats {
   user-select: none;
 }
 
-.row .row-info { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.row .row-info { display: flex; align-items: center; justify-content: center; gap: 3px; }
 
 .row:hover { background: #f0f6ff; }
 

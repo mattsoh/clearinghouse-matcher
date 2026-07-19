@@ -839,10 +839,7 @@ document.getElementById("search-outgoing-before").addEventListener("input", rend
 document.getElementById("sort-incoming").addEventListener("change", renderLists);
 document.getElementById("sort-outgoing").addEventListener("change", renderLists);
 
-// Lets the "Current match" column be resized by dragging the handles beside
-// it, but only where dragging a 6px handle is actually practical: a fine
-// pointer (mouse/trackpad) on a wide-enough viewport that the three-column
-// layout is in play (below 1100px the layout collapses to two columns).
+
 const TRAY_WIDTH_STORAGE_KEY = "steelyard.trayWidth";
 const TRAY_WIDTH_MIN = 300;
 const TRAY_WIDTH_MAX = 600;
@@ -853,7 +850,6 @@ function applyTrayWidth(px) {
 
 function wireColumnResizer(handle, side) {
   handle.addEventListener("pointerdown", (e) => {
-    if (!window.matchMedia("(pointer: fine)").matches) return;
     if (window.matchMedia("(max-width: 1100px)").matches) return;
     e.preventDefault();
 
