@@ -16,6 +16,11 @@ module Steelyard
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks])
 
+    # Render our own branded pages for 404/422/400/500 instead of the static
+    # files in public/, while still falling back to those files if the app
+    # itself is unable to boot.
+    config.exceptions_app = self.routes
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files
