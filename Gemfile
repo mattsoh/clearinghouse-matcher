@@ -49,6 +49,8 @@ gem "thruster", require: false
 # (dev/test get their own automatic .env loading from dotenv-rails below instead).
 gem "dotenv", require: false
 
+gem "appsignal"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -75,3 +77,5 @@ group :test do
   # Minitest 6 split Mock/Object#stub out of core; restores it for test doubles
   gem "minitest-mock"
 end
+
+
