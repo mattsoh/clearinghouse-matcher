@@ -12,7 +12,7 @@ class Api::MatchesControllerTest < ActionController::TestCase
   test "unauthenticated requests are redirected to login" do
     session[:user_id] = nil
     get :index, params: { organization_id: "org_1" }
-    assert_redirected_to login_path
+    assert_redirected_to root_path
   end
 
   test "a non-member gets the same not-found response as a nonexistent org" do

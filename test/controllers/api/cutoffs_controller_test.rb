@@ -16,7 +16,7 @@ class Api::CutoffsControllerTest < ActionController::TestCase
   test "unauthenticated requests are redirected to login" do
     session[:user_id] = nil
     patch :update, params: { organization_id: "org_1", transaction_id: "txn_2" }
-    assert_redirected_to login_path
+    assert_redirected_to root_path
   end
 
   test "a reader cannot change the cutoff" do

@@ -29,6 +29,6 @@ class MatcherControllerTest < ActionController::TestCase
   test "unauthenticated visitors are redirected to login" do
     session[:user_id] = nil
     get :show, params: { organization_id: "org_1" }
-    assert_redirected_to login_path
+    assert_redirected_to root_path
   end
 end

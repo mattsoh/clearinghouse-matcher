@@ -6,7 +6,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Hcb::TokenExpiredError do
     reset_session
-    redirect_to login_path, alert: "Your session with HCB expired. Please log in again."
+    redirect_to root_path, alert: "Your session with HCB expired. Please log in again."
   end
 
   private
@@ -17,7 +17,7 @@ class ApplicationController < ActionController::Base
   helper_method :current_user
 
   def require_login!
-    redirect_to login_path unless current_user
+    redirect_to root_path unless current_user
   end
 
   def hcb_client

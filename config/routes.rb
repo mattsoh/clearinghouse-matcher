@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  root to: redirect("/organizations")
+  root "home#index"
 
   get    "login",             to: "sessions#new",      as: :login
   get    "auth/hcb/callback", to: "sessions#callback",  as: :hcb_callback
