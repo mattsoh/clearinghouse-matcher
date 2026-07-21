@@ -46,6 +46,7 @@ class SessionsController < ApplicationController
   end
 
   def destroy
+    current_user&.update(access_token: nil, refresh_token: nil, token_expires_at: nil)
     reset_session
     redirect_to root_path
   end
