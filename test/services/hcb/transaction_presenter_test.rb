@@ -53,6 +53,55 @@ class Hcb::TransactionPresenterTest < ActiveSupport::TestCase
     presenter = Hcb::TransactionPresenter.new({ "id" => "txn_3", "date" => "2026-01-03", "memo" => "Fee", "amount_cents" => -100 })
     json = presenter.as_json
 
-    assert_equal %i[id date memo amount direction tags user_name category_label].sort, json.keys.sort
+    assert_equal %i[
+      id date settled_date memo amount direction tags user_name category_label
+      recipient_name pending declined reversed missing_receipt lost_receipt decline_reason
+    ].sort, json.keys.sort
+  end
+
+  test "date falls back to the settled date when there's no sent-side timestamp for this type" do
+    presenter = Hcb::TransactionPresenter.new({ "id" => "txn_9", "date" => "2026-01-09", "amount_cents" => 100, "check_deposit" => { "status" => "deposited" } })
+
+    assert_equal "2026-01-09", presenter.date
+    assert_equal "2026-01-09", presenter.settled_date
+  end
+
+  test "date uses the sent-side timestamp when the transaction has since settled on a later date" do
+    presenter = Hcb::TransactionPresenter.new({
+      "id" => "txn_10", "date" => "2026-02-15", "amount_cents" => 5_000,
+      "ach_transfer" => { "created_at" => "2026-02-01T12:00:00Z" }
+    })
+
+    assert_equal "2026-02-01", presenter.date
+    assert_equal "2026-02-15", presenter.settled_date
+  end
+
+  test "donations use donated_at, preferring it over the sub-object's own created_at" do
+    presenter = Hcb::TransactionPresenter.new({
+      "id" => "txn_11", "date" => "2026-03-10", "amount_cents" => 2_500,
+      "donation" => { "donated_at" => "2026-03-01T00:00:00Z", "created_at" => "2026-03-02T00:00:00Z" }
+    })
+
+    assert_equal "2026-03-01", presenter.date
+  end
+
+  test "wise transfers prefer sent_at over created_at when both are present" do
+    presenter = Hcb::TransactionPresenter.new({
+      "id" => "txn_12", "date" => "2026-04-20", "amount_cents" => -1_000,
+      "wise_transfer" => { "created_at" => "2026-04-01T00:00:00Z", "sent_at" => "2026-04-05T00:00:00Z" }
+    })
+
+    assert_equal "2026-04-05", presenter.date
+  end
+
+  test "recipient_name reads the counterparty for common transaction types" do
+    donation = Hcb::TransactionPresenter.new({ "id" => "txn_13", "amount_cents" => 100, "donation" => { "donor" => { "name" => "External Donor" } } })
+    assert_equal "External Donor", donation.recipient_name
+
+    ach = Hcb::TransactionPresenter.new({ "id" => "txn_14", "amount_cents" => -100, "ach_transfer" => { "recipient_name" => "Acme Co" } })
+    assert_equal "Acme Co", ach.recipient_name
+
+    card = Hcb::TransactionPresenter.new({ "id" => "txn_15", "amount_cents" => -100, "card_charge" => { "merchant" => { "name" => "COFFEE SHOP #123", "smart_name" => "Coffee Shop" } } })
+    assert_equal "Coffee Shop", card.recipient_name
   end
 end

@@ -37,7 +37,12 @@ module Hcb
       response = access_token.get(path, params: params.compact)
       JSON.parse(response.body)
     rescue OAuth2::Error => e
-      raise Hcb::TokenExpiredError, e.message if e.response.status == 401
+      # 401 is an expired/revoked token; 403 from HCB's "restricted" tokens
+      # means the token predates a scope this app now requires (e.g.
+      # comments:read, added after some users had already authorized) --
+      # both are only fixable by sending the user through the OAuth flow
+      # again to pick up the current scope list.
+      raise Hcb::TokenExpiredError, e.message if e.response.status.in?([ 401, 403 ])
       raise
     end
 

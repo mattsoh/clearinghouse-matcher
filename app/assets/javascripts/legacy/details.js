@@ -18,7 +18,9 @@ function commentsFieldHtml(html) {
 function commentHtml(c) {
   const author = escapeHtml(c.user_name) || "Someone";
   const fileHtml = c.file_url ? ` <a href="${escapeHtml(c.file_url)}" target="_blank" rel="noopener">attachment</a>` : "";
-  return `<div class="detail-comment"><strong>${author}:</strong> ${escapeHtml(c.content)}${fileHtml}</div>`;
+  const dateHtml = c.created_at ? ` <span class="detail-comment-date">${escapeHtml(new Date(c.created_at).toLocaleString())}</span>` : "";
+  const adminHtml = c.admin_only ? ` <span class="detail-comment-admin-only">(admin only)</span>` : "";
+  return `<div class="detail-comment"><strong>${author}:</strong>${adminHtml} ${escapeHtml(c.content)}${fileHtml}${dateHtml}</div>`;
 }
 
 function showDetailsModal(t) {
@@ -28,11 +30,24 @@ function showDetailsModal(t) {
 
   title.textContent = `${t.date} — ${fmtDetail(t.amount)}`;
 
+  const statusParts = [];
+  if (t.pending) statusParts.push("Pending");
+  if (t.declined) statusParts.push("Declined" + (t.decline_reason ? ` (${t.decline_reason})` : ""));
+  if (t.reversed) statusParts.push("Reversed");
+  if (t.missing_receipt) statusParts.push("Missing receipt");
+  if (t.lost_receipt) statusParts.push("Lost receipt");
+
   const fields = [
     ["Memo", t.memo],
     ["Tags", t.tags],
     ["User", t.user_name],
+    ["Recipient", t.recipient_name],
     ["Category", t.category_label],
+    ["Status", statusParts.join(", ")],
+    // Only shown when the transaction has settled on a date other than the
+    // one it was sent on -- most transactions clear same-day, so this only
+    // adds noise for the ones (ACH, checks) where the two actually diverge.
+    ...(t.settled_date && t.settled_date !== t.date ? [ [ "Settled", t.settled_date ] ] : []),
   ];
 
   const isManual = t.id < 0;

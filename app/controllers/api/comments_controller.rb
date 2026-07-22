@@ -15,7 +15,8 @@ class Api::CommentsController < ApplicationController
           user_name: c.dig("user", "name") || "",
           content: c["content"] || "",
           file_url: c["file"],
-          admin_only: !!c["admin_only"]
+          admin_only: !!c["admin_only"],
+          created_at: c["created_at"]
         }
       end
     }

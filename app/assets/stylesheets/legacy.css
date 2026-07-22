@@ -559,6 +559,10 @@ button.danger {
 }
 .modal-field .field-value { white-space: pre-wrap; word-break: break-word; }
 
+.detail-comment + .detail-comment { margin-top: 8px; }
+.detail-comment-date { font-size: 11px; color: #656d76; }
+.detail-comment-admin-only { font-size: 11px; color: #656d76; font-style: italic; }
+
 /* The base `main` rule sets up a 5-column grid sized for the matcher page's
    panels + resize handles. The ledger page only has one child (#panel-ledger),
    so without overriding display/columns here it collapses into just the
