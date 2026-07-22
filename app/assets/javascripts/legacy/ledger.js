@@ -10,6 +10,45 @@ let zeroBalanceSelectedId = null;
 let pendingCutoffId = null;
 let cutoffBusy = false;
 
+const FILTER_STORAGE_KEY = `steelyard.ledgerFilters.${window.HCB_ORGANIZATION_ID}`;
+
+// Persists the search/filter controls to localStorage so an accidental
+// refresh (or coming back later) doesn't silently reset a search someone was
+// in the middle of -- the underlying transaction data reloads regardless,
+// this just restores what the view was narrowed down to.
+function saveLedgerFilters() {
+  try {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+      search: document.getElementById("search-ledger").value,
+      searchAmount: document.getElementById("search-ledger-amount").value,
+      after: document.getElementById("search-ledger-after").value,
+      before: document.getElementById("search-ledger-before").value,
+      matched: document.getElementById("filter-matched").checked,
+      discrepancy: document.getElementById("filter-discrepancy").checked,
+      unmatched: document.getElementById("filter-unmatched").checked,
+    }));
+  } catch (e) {}
+}
+
+function restoreLedgerFilters() {
+  let snap;
+  try {
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!raw) return;
+    snap = JSON.parse(raw);
+  } catch (e) {
+    return;
+  }
+
+  document.getElementById("search-ledger").value = snap.search || "";
+  document.getElementById("search-ledger-amount").value = snap.searchAmount || "";
+  document.getElementById("search-ledger-after").value = snap.after || "";
+  document.getElementById("search-ledger-before").value = snap.before || "";
+  document.getElementById("filter-matched").checked = snap.matched !== false;
+  document.getElementById("filter-discrepancy").checked = snap.discrepancy !== false;
+  document.getElementById("filter-unmatched").checked = snap.unmatched !== false;
+}
+
 const fmt = (n) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(2);
 
 function amountMatches(amount, query) {
@@ -215,6 +254,8 @@ function render() {
   body.querySelectorAll(".hcb-link").forEach((el) => {
     el.addEventListener("click", (e) => e.stopPropagation());
   });
+
+  saveLedgerFilters();
 }
 
 document.getElementById("search-ledger").addEventListener("input", render);
@@ -316,4 +357,5 @@ document.getElementById("cutoff-modal-overlay").addEventListener("click", (e) =>
   if (e.target.id === "cutoff-modal-overlay") hideCutoffModal();
 });
 
+restoreLedgerFilters();
 load();

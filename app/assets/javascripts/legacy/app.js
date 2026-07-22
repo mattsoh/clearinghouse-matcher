@@ -89,6 +89,39 @@ function restoreTraySnapshot() {
   }
 }
 
+const FILTER_STORAGE_KEY = `steelyard.matcherFilters.${window.HCB_ORGANIZATION_ID}`;
+const FILTER_FIELD_IDS = [
+  "search-incoming", "search-incoming-amount", "search-incoming-after", "search-incoming-before",
+  "search-outgoing", "search-outgoing-amount", "search-outgoing-after", "search-outgoing-before",
+  "sort-incoming", "sort-outgoing",
+];
+
+// Persists the search/sort controls to localStorage so an accidental refresh
+// (or coming back later) doesn't silently reset a search someone was in the
+// middle of -- the underlying transaction/match data reloads regardless,
+// this just restores what the view was narrowed down to.
+function saveFilterSnapshot() {
+  try {
+    const snap = {};
+    for (const id of FILTER_FIELD_IDS) snap[id] = document.getElementById(id).value;
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snap));
+  } catch (e) {}
+}
+
+function restoreFilterSnapshot() {
+  let snap;
+  try {
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!raw) return;
+    snap = JSON.parse(raw);
+  } catch (e) {
+    return;
+  }
+  for (const id of FILTER_FIELD_IDS) {
+    if (snap[id] !== undefined) document.getElementById(id).value = snap[id];
+  }
+}
+
 const fmt = (n) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(2);
 
 function amountMatches(amount, query) {
@@ -368,6 +401,8 @@ function renderLists() {
   });
   wireDetailButtons(inList);
   wireDetailButtons(outList);
+
+  saveFilterSnapshot();
 }
 
 function rangeSelection(order, selected, anchorId, id) {
@@ -887,4 +922,5 @@ if (!Number.isNaN(storedTrayWidth)) {
 wireColumnResizer(document.getElementById("resizer-left"), "left");
 wireColumnResizer(document.getElementById("resizer-right"), "right");
 
+restoreFilterSnapshot();
 loadAll();
