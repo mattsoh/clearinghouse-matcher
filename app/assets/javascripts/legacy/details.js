@@ -121,12 +121,16 @@ function hideDetailsModal() {
   document.getElementById("detail-modal-overlay").classList.add("hidden");
 }
 
+// `byId` is app.js's transaction lookup (the only page that renders
+// .info-icon buttons) -- looking it up here instead of round-tripping the
+// whole transaction through JSON on the button's dataset avoids
+// re-serializing every visible transaction's full object on every render.
 function wireDetailButtons(root) {
   root.querySelectorAll(".info-icon").forEach((el) => {
     el.addEventListener("click", (e) => {
       e.stopPropagation();
-      const t = JSON.parse(el.dataset.detail);
-      showDetailsModal(t);
+      const t = byId.get(el.dataset.id);
+      if (t) showDetailsModal(t);
     });
   });
   root.querySelectorAll(".hcb-link").forEach((el) => {

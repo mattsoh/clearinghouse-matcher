@@ -258,10 +258,24 @@ function render() {
   saveLedgerFilters();
 }
 
-document.getElementById("search-ledger").addEventListener("input", render);
-document.getElementById("search-ledger-amount").addEventListener("input", render);
-document.getElementById("search-ledger-after").addEventListener("input", render);
-document.getElementById("search-ledger-before").addEventListener("input", render);
+// Search/amount/date fields fire on every keystroke -- without debouncing,
+// each one rebuilds the full (often multi-thousand-row) ledger table once per
+// character typed. Checkbox filters fire once per toggle, so those stay on
+// the immediate handler.
+function debounce(fn, wait) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+const debouncedRender = debounce(render, 150);
+
+document.getElementById("search-ledger").addEventListener("input", debouncedRender);
+document.getElementById("search-ledger-amount").addEventListener("input", debouncedRender);
+document.getElementById("search-ledger-after").addEventListener("input", debouncedRender);
+document.getElementById("search-ledger-before").addEventListener("input", debouncedRender);
 document.getElementById("filter-matched").addEventListener("change", render);
 document.getElementById("filter-discrepancy").addEventListener("change", render);
 document.getElementById("filter-unmatched").addEventListener("change", render);

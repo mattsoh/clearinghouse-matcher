@@ -281,7 +281,7 @@ function renderStats() {
 const trashIconSvg = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M4 4l.6 9a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4"/></svg>`;
 
 function infoIconHtml(t) {
-  return `<button type="button" class="info-icon" data-detail="${escapeHtml(JSON.stringify(t))}" title="View full details">ⓘ</button>`;
+  return `<button type="button" class="info-icon" data-id="${escapeHtml(String(t.id))}" title="View full details">ⓘ</button>`;
 }
 
 // Transaction ids are HCB's public ids ("txn_<hashid>"), and HCB's own site
@@ -865,14 +865,28 @@ document.getElementById("cutoff-modal-overlay").addEventListener("click", (e) =>
 document.getElementById("btn-confirm").addEventListener("click", confirmMatch);
 document.getElementById("btn-cancel").addEventListener("click", cancelMatch);
 document.getElementById("btn-refresh-matches").addEventListener("click", refreshMatches);
-document.getElementById("search-incoming").addEventListener("input", renderLists);
-document.getElementById("search-incoming-amount").addEventListener("input", renderLists);
-document.getElementById("search-incoming-after").addEventListener("input", renderLists);
-document.getElementById("search-incoming-before").addEventListener("input", renderLists);
-document.getElementById("search-outgoing").addEventListener("input", renderLists);
-document.getElementById("search-outgoing-amount").addEventListener("input", renderLists);
-document.getElementById("search-outgoing-after").addEventListener("input", renderLists);
-document.getElementById("search-outgoing-before").addEventListener("input", renderLists);
+// Search/amount/date fields fire on every keystroke -- without debouncing,
+// each one rebuilds both full row lists (and re-renders every visible row)
+// once per character typed. Sort selects fire once per choice, so those stay
+// on the immediate handler.
+function debounce(fn, wait) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+const debouncedRenderLists = debounce(renderLists, 150);
+
+document.getElementById("search-incoming").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-incoming-amount").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-incoming-after").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-incoming-before").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-outgoing").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-outgoing-amount").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-outgoing-after").addEventListener("input", debouncedRenderLists);
+document.getElementById("search-outgoing-before").addEventListener("input", debouncedRenderLists);
 document.getElementById("sort-incoming").addEventListener("change", renderLists);
 document.getElementById("sort-outgoing").addEventListener("change", renderLists);
 
