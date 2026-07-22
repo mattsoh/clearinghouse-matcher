@@ -161,7 +161,7 @@ function rowStatus(r) {
 }
 
 function render() {
-  const filter = document.getElementById("search-ledger").value.toLowerCase();
+  const filter = document.getElementById("search-ledger").value.trim().toLowerCase();
   const amountFilter = document.getElementById("search-ledger-amount").value;
   const afterFilter = document.getElementById("search-ledger-after").value;
   const beforeFilter = document.getElementById("search-ledger-before").value;

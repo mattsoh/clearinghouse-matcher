@@ -318,11 +318,11 @@ function sortTransactions(list, sortValue) {
 
 function renderLists() {
   const unmatched = unmatchedTransactions();
-  const incomingFilter = document.getElementById("search-incoming").value.toLowerCase();
+  const incomingFilter = document.getElementById("search-incoming").value.trim().toLowerCase();
   const incomingAmountFilter = document.getElementById("search-incoming-amount").value;
   const incomingAfterFilter = document.getElementById("search-incoming-after").value;
   const incomingBeforeFilter = document.getElementById("search-incoming-before").value;
-  const outgoingFilter = document.getElementById("search-outgoing").value.toLowerCase();
+  const outgoingFilter = document.getElementById("search-outgoing").value.trim().toLowerCase();
   const outgoingAmountFilter = document.getElementById("search-outgoing-amount").value;
   const outgoingAfterFilter = document.getElementById("search-outgoing-after").value;
   const outgoingBeforeFilter = document.getElementById("search-outgoing-before").value;
